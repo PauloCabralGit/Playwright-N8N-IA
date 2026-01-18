@@ -18,6 +18,20 @@ jobs:
         run: npm install
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
+      
+      - name: Create .env file from secrets
+        run: |
+          cat > .env << 'EOF'
+          SALESFORCE_URL=${{ secrets.SALESFORCE_URL }}
+          SALESFORCE_EMAIL=${{ secrets.SALESFORCE_EMAIL }}
+          SALESFORCE_PASSWORD=${{ secrets.SALESFORCE_PASSWORD }}
+          EMC_CODE=${{ secrets.EMC_CODE }}
+          VENDEDOR=${{ secrets.VENDEDOR }}
+          CPF=${{ secrets.CPF }}
+          CEP=${{ secrets.CEP }}
+          ESTADO=${{ secrets.ESTADO }}
+          EOF
+      
       - name: Trigger remote test-runner (or run locally if RUNNER_URL not set)
         env:
           SALESFORCE_URL: ${{ secrets.SALESFORCE_URL }}
