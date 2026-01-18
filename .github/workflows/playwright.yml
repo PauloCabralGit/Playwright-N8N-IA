@@ -20,9 +20,9 @@ jobs:
         run: npx playwright install --with-deps
       - name: Trigger remote test-runner (or run locally if RUNNER_URL not set)
         env:
-          SF_URL: ${{ secrets.SF_URL }}
-          SF_LOGIN: ${{ secrets.SF_LOGIN }}
-          SF_PASSWORD: ${{ secrets.SF_PASSWORD }}
+          SALESFORCE_URL: ${{ secrets.SALESFORCE_URL }}
+          SALESFORCE_EMAIL: ${{ secrets.SALESFORCE_EMAIL }}
+          SALESFORCE_PASSWORD: ${{ secrets.SALESFORCE_PASSWORD }}
           RUNNER_URL: ${{ secrets.RUNNER_URL }}
           RUNNER_API_KEY: ${{ secrets.RUNNER_API_KEY }}
         run: |
@@ -44,10 +44,15 @@ jobs:
           CURL_OPTS+=( -H "Content-Type: application/json" )
 
           PAYLOAD=$(jq -n --arg ambiente "preprod" \
-            --arg sf_url "${SF_URL:-}" \
-            --arg sf_login "${SF_LOGIN:-}" \
-            --arg sf_password "${SF_PASSWORD:-}" \
-            '{ambiente:$ambiente, env: {SF_URL:$sf_url, SF_LOGIN:$sf_login, SF_PASSWORD:$sf_password}}')
+            --arg salesforce_url "${SALESFORCE_URL:-}" \
+            --arg salesforce_email "${SALESFORCE_EMAIL:-}" \
+            --arg salesforce_password "${SALESFORCE_PASSWORD:-}" \
+            --arg emc_code "${EMC_CODE:-}" \
+            --arg vendedor "${VENDEDOR:-}" \
+            --arg cpf "${CPF:-}" \
+            --arg cep "${CEP:-}" \
+            --arg estado "${ESTADO:-}" \
+            '{ambiente:$ambiente, env: {SALESFORCE_URL:$salesforce_url, SALESFORCE_EMAIL:$salesforce_email, SALESFORCE_PASSWORD:$salesforce_password, EMC_CODE:$emc_code, VENDEDOR:$vendedor, CPF:$cpf, CEP:$cep, ESTADO:$estado}}')
 
           echo "Payload: $PAYLOAD"
 
