@@ -6,11 +6,11 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Environment variables (não enviar credenciais reais)
-
+.env
 .env.local
 .env.*.local
-.env.example
 # Manter .env.example para template
+!.env.example
 
 
 # Build and dist directories
