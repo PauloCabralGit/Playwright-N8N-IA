@@ -21,7 +21,7 @@ jobs:
       
       - name: Create .env file from secrets
         run: |
-          cat > .env << 'EOF'
+          cat > .env << EOF
           SALESFORCE_URL=${{ secrets.SALESFORCE_URL }}
           SALESFORCE_EMAIL=${{ secrets.SALESFORCE_EMAIL }}
           SALESFORCE_PASSWORD=${{ secrets.SALESFORCE_PASSWORD }}
@@ -31,12 +31,10 @@ jobs:
           CEP=${{ secrets.CEP }}
           ESTADO=${{ secrets.ESTADO }}
           EOF
+          cat .env
       
       - name: Trigger remote test-runner (or run locally if RUNNER_URL not set)
         env:
-          SALESFORCE_URL: ${{ secrets.SALESFORCE_URL }}
-          SALESFORCE_EMAIL: ${{ secrets.SALESFORCE_EMAIL }}
-          SALESFORCE_PASSWORD: ${{ secrets.SALESFORCE_PASSWORD }}
           RUNNER_URL: ${{ secrets.RUNNER_URL }}
           RUNNER_API_KEY: ${{ secrets.RUNNER_API_KEY }}
         run: |
