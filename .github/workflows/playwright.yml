@@ -4,6 +4,12 @@ on:
   push:
     branches: [ main ]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to test (preprod/prod)'
+        required: false
+        default: 'preprod'
 
 jobs:
   test:
