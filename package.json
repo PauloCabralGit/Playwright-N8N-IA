@@ -1,0 +1,21 @@
+{
+  "name": "playwright-n8n-ia",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "npx playwright test",
+    "test:headed": "npx playwright test --headed",
+    "test:report": "npx playwright show-report",
+    "install-deps": "npm ci && npx playwright install --with-deps",
+    "start-runner": "node test-runner-server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "uuid": "^9.0.0",
+    "adm-zip": "^0.5.9"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "js-yaml": "^4.1.0"
+  }
+}

@@ -1,0 +1,38 @@
+# Dockerfile simplificado SEM navegador (para desenvolvimento)
+FROM python:3.11-slim
+
+# Definir diretório de trabalho
+WORKDIR /app
+
+# Instalar dependências básicas do sistema
+RUN apt-get update && apt-get install -y \
+    wget \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar arquivos do projeto
+COPY requirements.txt .
+COPY .env.docker* ./
+COPY *.py ./
+COPY *.html ./
+COPY *.json ./
+COPY *.sh ./
+COPY Web_SF/ ./Web_SF/
+COPY robot_config/ ./robot_config/
+COPY massas/ ./massas/
+COPY config/ ./config/
+
+# Criar diretório results
+RUN mkdir -p /app/results
+
+# Instalar dependências Python
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Tornar scripts executáveis
+RUN chmod +x *.sh
+
+# Expor portas
+EXPOSE 5000
+
+# Definir entrypoint
+ENTRYPOINT ["/bin/bash", "/app/docker_entrypoint.sh"]

@@ -1,0 +1,38 @@
+# Cria o arquivo .dockerignore se não existir
+if not exist .dockerignore (
+    echo "" > .dockerignore
+)
+
+# Adiciona conteúdo ao .dockerignore
+echo "# Diretórios" > .dockerignore
+echo ".git" >> .dockerignore
+echo ".github" >> .dockerignore
+echo "__pycache__" >> .dockerignore
+echo ".idea" >> .dockerignore
+echo ".vscode" >> .dockerignore
+echo "env" >> .dockerignore
+echo "venv" >> .dockerignore
+echo "" >> .dockerignore
+echo "# Arquivos" >> .dockerignore
+echo "*.pyc" >> .dockerignore
+echo "*.pyo" >> .dockerignore
+echo "*.pyd" >> .dockerignore
+echo ".Python" >> .dockerignore
+echo "*.log" >> .dockerignore
+echo "*.swp" >> .dockerignore
+echo "*.swo" >> .dockerignore
+echo ".DS_Store" >> .dockerignore
+echo "" >> .dockerignore
+echo "# Arquivos de configuração local" >> .dockerignore
+echo ".env" >> .dockerignore
+echo "config.local.yaml" >> .dockerignore
+echo "" >> .dockerignore
+echo "# Pastas de build e distribuição" >> .dockerignore
+echo "build/" >> .dockerignore
+echo "dist/" >> .dockerignore
+echo "*.egg-info/" >> .dockerignore
+echo "" >> .dockerignore
+echo "# Logs e relatórios" >> .dockerignore
+echo "logs/" >> .dockerignore
+echo "results/" >> .dockerignore
+echo "reports/" >> .dockerignore
