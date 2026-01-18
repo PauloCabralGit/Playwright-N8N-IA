@@ -5,10 +5,13 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Environment variables
-.env
+# Environment variables (não enviar credenciais reais)
+
 .env.local
 .env.*.local
+.env.example
+# Manter .env.example para template
+
 
 # Build and dist directories
 dist/

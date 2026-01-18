@@ -10,12 +10,15 @@
     "start-runner": "node test-runner-server.js"
   },
   "dependencies": {
+    "adm-zip": "^0.5.9",
+    "dotenv": "^17.2.3",
     "express": "^4.18.2",
-    "uuid": "^9.0.0",
-    "adm-zip": "^0.5.9"
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.0.9",
     "js-yaml": "^4.1.0"
   }
 }
