@@ -1,4 +1,4 @@
-name: Playwright Tests via N8N
+name: Playwright Tests
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment (preprod/prod)'
+        description: 'Environment to test (preprod/prod)'
         required: false
         default: 'preprod'
 
@@ -16,71 +16,108 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: npm install
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
       
-      - name: Trigger N8N Webhook
+      - name: Create .env file from secrets
+        run: |
+          cat > .env << EOF
+          SALESFORCE_URL=${{ secrets.SALESFORCE_URL }}
+          SALESFORCE_EMAIL=${{ secrets.SALESFORCE_EMAIL }}
+          SALESFORCE_PASSWORD=${{ secrets.SALESFORCE_PASSWORD }}
+          
+          EOF
+          cat .env
+      
+      - name: Trigger remote test-runner (or run locally if RUNNER_URL not set)
         env:
-          N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
-          SF_URL: ${{ secrets.SF_URL }}
-          SF_LOGIN: ${{ secrets.SF_LOGIN }}
-          SF_PASSWORD: ${{ secrets.SF_PASSWORD }}
+          RUNNER_URL: ${{ secrets.RUNNER_URL }}
+          RUNNER_API_KEY: ${{ secrets.RUNNER_API_KEY }}
         run: |
           set -euo pipefail
-          
-          if [ -z "${N8N_WEBHOOK_URL:-}" ]; then
-            echo "ERROR: N8N_WEBHOOK_URL not configured in secrets"
-            exit 1
+          if [ -z "${RUNNER_URL:-}" ]; then
+            echo "RUNNER_URL not provided — running tests locally"
+            npm test
+            exit $?
           fi
-          
-          echo "🚀 Triggering N8N workflow at: $N8N_WEBHOOK_URL"
-          
-          # Install jq for JSON processing
+
+          echo "Triggering remote runner at $RUNNER_URL"
           sudo apt-get update >/dev/null
           sudo apt-get install -y jq >/dev/null
-          
-          # Create payload
-          PAYLOAD=$(jq -n \
-            --arg ambiente "preprod" \
-            --arg sf_url "${SF_URL:-}" \
-            --arg sf_login "${SF_LOGIN:-}" \
-            --arg sf_password "${SF_PASSWORD:-}" \
-            --arg github_run_id "${{ github.run_id }}" \
-            --arg github_actor "${{ github.actor }}" \
-            --arg github_ref "${{ github.ref }}" \
-            '{
-              "environment": $ambiente,
-              "credentials": {
-                "sf_url": $sf_url,
-                "sf_login": $sf_login,
-                "sf_password": $sf_password
-              },
-              "source": "github-actions",
-              "github_run_id": $github_run_id,
-              "github_actor": $github_actor,
-              "github_ref": $github_ref
-            }')
-          
-          echo "📤 Sending payload to N8N..."
-          RESPONSE=$(curl -sS \
-            -X POST \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD" \
-            "$N8N_WEBHOOK_URL")
-          
-          echo "✅ N8N Response:"
-          echo "$RESPONSE" | jq . || echo "$RESPONSE"
-          
-          # Extract execution ID if available
-          EXEC_ID=$(echo "$RESPONSE" | jq -r '.id // .execution_id // empty' 2>/dev/null || true)
-          
-          if [ -n "$EXEC_ID" ]; then
-            echo "📊 Execution ID: $EXEC_ID"
-            echo "execution_id=$EXEC_ID" >> $GITHUB_OUTPUT
+
+          CURL_OPTS=( -sS )
+          if [ -n "${RUNNER_API_KEY:-}" ]; then
+            CURL_OPTS+=( -H "Authorization: Bearer ${RUNNER_API_KEY}" )
           fi
-      
-      - name: Show N8N Webhook Info
-        run: |
-          echo "✨ N8N Workflow has been triggered!"
-          echo ""
-          echo "📝 Monitor your tests at: http://localhost:5678 (or your N8N instance)"
-          echo ""
-          echo "Discord notification will be sent with the test results"
+          CURL_OPTS+=( -H "Content-Type: application/json" )
+
+          PAYLOAD=$(jq -n --arg ambiente "preprod" \
+            --arg salesforce_url "${SALESFORCE_URL:-}" \
+            --arg salesforce_email "${SALESFORCE_EMAIL:-}" \
+            --arg salesforce_password "${SALESFORCE_PASSWORD:-}" \
+            --arg emc_code "${EMC_CODE:-}" \
+            --arg vendedor "${VENDEDOR:-}" \
+            --arg cpf "${CPF:-}" \
+            --arg cep "${CEP:-}" \
+            --arg estado "${ESTADO:-}" \
+            '{ambiente:$ambiente, env: {SALESFORCE_URL:$salesforce_url, SALESFORCE_EMAIL:$salesforce_email, SALESFORCE_PASSWORD:$salesforce_password, EMC_CODE:$emc_code, VENDEDOR:$vendedor, CPF:$cpf, CEP:$cep, ESTADO:$estado}}')
+
+          echo "Payload: $PAYLOAD"
+
+          RESP=$(curl "${CURL_OPTS[@]}" -d "$PAYLOAD" "$RUNNER_URL/run-tests")
+          echo "Response: $RESP"
+          EXEC_ID=$(echo "$RESP" | jq -r .execution_id)
+          if [ -z "$EXEC_ID" ] || [ "$EXEC_ID" = "null" ]; then
+            echo "Failed to start remote execution" >&2
+            exit 1
+          fi
+
+          echo "Execution id: $EXEC_ID"
+
+          # Poll for completion
+          while true; do
+            DETAILS=$(curl "${CURL_OPTS[@]}" "$RUNNER_URL/execution-details/$EXEC_ID")
+            STATUS=$(echo "$DETAILS" | jq -r .status // empty)
+            echo "Status: $STATUS"
+            if [ "$STATUS" != "running" ] && [ "$STATUS" != "queued" ] && [ -n "$STATUS" ]; then
+              break
+            fi
+            sleep 5
+          done
+
+          echo "$DETAILS" > execution-$EXEC_ID.json
+          echo "Saved execution details to execution-$EXEC_ID.json"
+
+          # Try to download the generated report zip (if the runner produced one)
+          REPORT_URL="$RUNNER_URL/execution-report/$EXEC_ID"
+          echo "Attempting to download report from $REPORT_URL"
+          HTTP_CODE=0
+          set +e
+          if [ -n "${RUNNER_API_KEY:-}" ]; then
+            curl -sS -H "Authorization: Bearer ${RUNNER_API_KEY}" -o execution-$EXEC_ID-report.zip -w "%{http_code}" "$REPORT_URL" > /tmp/report_http_code 2>/dev/null || true
+          else
+            curl -sS -o execution-$EXEC_ID-report.zip -w "%{http_code}" "$REPORT_URL" > /tmp/report_http_code 2>/dev/null || true
+          fi
+          HTTP_CODE=$(cat /tmp/report_http_code || echo 0)
+          set -e
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "Downloaded report to execution-$EXEC_ID-report.zip"
+          else
+            echo "No report found at $REPORT_URL (HTTP $HTTP_CODE)"
+            rm -f execution-$EXEC_ID-report.zip || true
+          fi
+
+      - name: Upload Playwright report and execution details
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            execution-*.json
+            execution-*-report.zip
