@@ -2,7 +2,7 @@
 
 Workflow que dispara testes Playwright no GitHub e envia resultados para Discord.
 
-## 📋 Fluxo
+## 📋 Fluxo Teste
 
 ```
 GitHub Webhook
