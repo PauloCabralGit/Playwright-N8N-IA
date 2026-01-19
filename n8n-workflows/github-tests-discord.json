@@ -1,0 +1,204 @@
+{
+  "name": "GitHub Tests to Discord",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "github-webhook",
+        "authentication": "headerAuth",
+        "headerAuth": {
+          "secretHeaderName": "X-GitHub-Token",
+          "secretHeaderValue": "{{ $secrets.GITHUB_WEBHOOK_SECRET }}"
+        },
+        "events": "push"
+      },
+      "id": "github_webhook",
+      "name": "GitHub Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "release",
+        "operation": "getReleases",
+        "owner": "{{ $json.repository.owner.login }}",
+        "repository": "{{ $json.repository.name }}"
+      },
+      "id": "check_branch",
+      "name": "Check if Main Branch",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [300, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "workflowRun",
+        "operation": "trigger",
+        "owner": "PauloCabralGit",
+        "repository": "Playwright-N8N-IA",
+        "workflowId": "playwright.yml",
+        "ref": "main"
+      },
+      "id": "trigger_tests",
+      "name": "Trigger Playwright Tests",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "workflowRun",
+        "operation": "get",
+        "owner": "PauloCabralGit",
+        "repository": "Playwright-N8N-IA",
+        "workflowRunId": "{{ $json.id }}"
+      },
+      "id": "wait_for_tests",
+      "name": "Wait for Tests to Complete",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "content": "{{ $json.conclusion }}",
+        "dataPropertyName": "testResult"
+      },
+      "id": "get_test_result",
+      "name": "Extract Test Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "content": "{% if $json.testResult == 'success' %}\n✅ Testes Playwright - PASSOU\n{% else %}\n❌ Testes Playwright - FALHOU\n{% endif %}",
+        "dataPropertyName": "discordMessage"
+      },
+      "id": "build_discord_message",
+      "name": "Build Discord Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "webhookUrl": "{{ $secrets.DISCORD_WEBHOOK_URL }}",
+        "content": "",
+        "embeds": [
+          {
+            "title": "🎭 Playwright Tests Report",
+            "description": "{{ $json.discordMessage }}",
+            "color": "{% if $json.testResult == 'success' %}65280{% else %}16711680{% endif %}",
+            "fields": [
+              {
+                "name": "Repository",
+                "value": "PauloCabralGit/Playwright-N8N-IA",
+                "inline": true
+              },
+              {
+                "name": "Branch",
+                "value": "main",
+                "inline": true
+              },
+              {
+                "name": "Status",
+                "value": "{{ $json.testResult }}",
+                "inline": true
+              },
+              {
+                "name": "Workflow Run",
+                "value": "[Ver Execução](https://github.com/PauloCabralGit/Playwright-N8N-IA/actions/runs/{{ $json.id }})",
+                "inline": false
+              },
+              {
+                "name": "Conclusion",
+                "value": "{{ $json.conclusion }}",
+                "inline": true
+              },
+              {
+                "name": "Created At",
+                "value": "{{ $json.created_at }}",
+                "inline": false
+              }
+            ],
+            "footer": {
+              "text": "Playwright Automation",
+              "icon_url": "https://playwright.dev/python/img/playwright-logo.svg"
+            }
+          }
+        ]
+      },
+      "id": "send_discord_message",
+      "name": "Send to Discord",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 1,
+      "position": [1300, 300]
+    }
+  ],
+  "connections": {
+    "github_webhook": {
+      "main": [
+        [
+          {
+            "node": "check_branch",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_branch": {
+      "main": [
+        [
+          {
+            "node": "trigger_tests",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "trigger_tests": {
+      "main": [
+        [
+          {
+            "node": "wait_for_tests",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait_for_tests": {
+      "main": [
+        [
+          {
+            "node": "get_test_result",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_test_result": {
+      "main": [
+        [
+          {
+            "node": "build_discord_message",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "build_discord_message": {
+      "main": [
+        [
+          {
+            "node": "send_discord_message",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

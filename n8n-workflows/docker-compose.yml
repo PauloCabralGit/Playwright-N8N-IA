@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n-automation
+    ports:
+      - "5678:5678"
+    environment:
+      # Database
+      - DB_TYPE=sqlite
+      - DB_SQLITE_FILE=/home/node/.n8n/database.sqlite
+      
+      # Timezone
+      - TIMEZONE=America/Sao_Paulo
+      - TZ=America/Sao_Paulo
+      
+      # N8N Configuration
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      
+      # Webhook
+      - WEBHOOK_TUNNEL_URL=https://seu-dominio.com/
+      - WEBHOOK_TUNNEL_REDIRECT_CODES=204
+      
+      # Logs
+      - LOG_LEVEL=info
+      
+      # Security
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-change-me}
+      
+      # Credentials
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-change-me-randomly}
+    
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./workflows:/home/node/.n8n/workflows
+    
+    networks:
+      - automation
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+  
+  # Opcional: PostgreSQL para N8N (substitui SQLite)
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: n8n-db
+  #   environment:
+  #     POSTGRES_USER: n8n
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD:-change-me}
+  #     POSTGRES_DB: n8n
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - automation
+  #   restart: unless-stopped
+
+volumes:
+  n8n_data:
+    driver: local
+  # postgres_data:
+  #   driver: local
+
+networks:
+  automation:
+    driver: bridge
