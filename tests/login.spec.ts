@@ -3,7 +3,7 @@ import path from 'path';
 import yaml from 'js-yaml';
 import { test, expect } from '@playwright/test';
 import dotenv from 'dotenv';
-import { LoginPage } from '../pages/LoginPage';
+import { LoginPage } from '../src/pages/LoginPage';
 
 // Carregar variáveis do .env (prioridade) ou .env.example (fallback)
 const envPath = path.resolve(__dirname, '..', '.env');

@@ -23,13 +23,6 @@ out/
 test-results/
 playwright-report/
 coverage/
-output.xml
-
-# Execution files (large files)
-execution-*.json
-
-# Models (very large files - do not upload)
-models/
 
 # IDE and Editor
 .vscode/
@@ -52,3 +45,6 @@ Thumbs.db
 tmp/
 temp/
 *.tmp
+
+# Execution logs
+runner.log
