@@ -1,0 +1,92 @@
+name: CI Playwright
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
+      N8N_WEBHOOK_SECRET: ${{ secrets.N8N_WEBHOOK_SECRET }}
+      RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Send start webhook
+        if: ${{ env.N8N_WEBHOOK_URL != '' }}
+        run: |
+          STARTED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          PAYLOAD=$(jq -n \
+            --arg event "run_started" \
+            --arg repo "${{ github.repository }}" \
+            --arg workflow "${{ github.workflow }}" \
+            --arg run_id "${{ github.run_id }}" \
+            --arg run_attempt "${{ github.run_attempt }}" \
+            --arg run_url "$RUN_URL" \
+            --arg sha "${{ github.sha }}" \
+            --arg ref "${{ github.ref }}" \
+            --arg actor "${{ github.actor }}" \
+            --arg started_at "$STARTED_AT" \
+            --arg ambiente "preprod" \
+            '{event:$event, repo:$repo, workflow:$workflow, run_id:$run_id, run_attempt:$run_attempt, run_url:$run_url, sha:$sha, ref:$ref, actor:$actor, started_at:$started_at, ambiente:$ambiente}'
+          )
+          HDR_SECRET=""
+          if [ -n "$N8N_WEBHOOK_SECRET" ]; then HDR_SECRET="-H 'X-N8N-Webhook-Secret: $N8N_WEBHOOK_SECRET'"; fi
+          bash -lc "curl -sS -X POST -H 'Content-Type: application/json' $HDR_SECRET --data '$PAYLOAD' '$N8N_WEBHOOK_URL'"
+
+      - name: Run Playwright tests
+        id: tests
+        run: |
+          set -e
+          npx playwright test
+        continue-on-error: true
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+
+      - name: Send finish webhook
+        if: ${{ always() && env.N8N_WEBHOOK_URL != '' }}
+        run: |
+          FINISHED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          STATUS="${{ job.status }}"
+          # conclusion best-effort based on step result
+          if [ "$STATUS" = "success" ]; then CONCLUSION="success"; else CONCLUSION="failure"; fi
+          PAYLOAD=$(jq -n \
+            --arg event "run_finished" \
+            --arg repo "${{ github.repository }}" \
+            --arg workflow "${{ github.workflow }}" \
+            --arg run_id "${{ github.run_id }}" \
+            --arg run_attempt "${{ github.run_attempt }}" \
+            --arg run_url "$RUN_URL" \
+            --arg sha "${{ github.sha }}" \
+            --arg ref "${{ github.ref }}" \
+            --arg actor "${{ github.actor }}" \
+            --arg status "$STATUS" \
+            --arg conclusion "$CONCLUSION" \
+            --arg finished_at "$FINISHED_AT" \
+            --arg ambiente "preprod" \
+            '{event:$event, repo:$repo, workflow:$workflow, run_id:$run_id, run_attempt:$run_attempt, run_url:$run_url, sha:$sha, ref:$ref, actor:$actor, status:$status, conclusion:$conclusion, finished_at:$finished_at, ambiente:$ambiente}'
+          )
+          HDR_SECRET=""
+          if [ -n "$N8N_WEBHOOK_SECRET" ]; then HDR_SECRET="-H 'X-N8N-Webhook-Secret: $N8N_WEBHOOK_SECRET'"; fi
+          bash -lc "curl -sS -X POST -H 'Content-Type: application/json' $HDR_SECRET --data '$PAYLOAD' '$N8N_WEBHOOK_URL'"
