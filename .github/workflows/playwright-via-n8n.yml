@@ -1,0 +1,86 @@
+name: Playwright Tests via N8N
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment (preprod/prod)'
+        required: false
+        default: 'preprod'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Trigger N8N Webhook
+        env:
+          N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
+          SF_URL: ${{ secrets.SF_URL }}
+          SF_LOGIN: ${{ secrets.SF_LOGIN }}
+          SF_PASSWORD: ${{ secrets.SF_PASSWORD }}
+        run: |
+          set -euo pipefail
+          
+          if [ -z "${N8N_WEBHOOK_URL:-}" ]; then
+            echo "ERROR: N8N_WEBHOOK_URL not configured in secrets"
+            exit 1
+          fi
+          
+          echo "🚀 Triggering N8N workflow at: $N8N_WEBHOOK_URL"
+          
+          # Install jq for JSON processing
+          sudo apt-get update >/dev/null
+          sudo apt-get install -y jq >/dev/null
+          
+          # Create payload
+          PAYLOAD=$(jq -n \
+            --arg ambiente "preprod" \
+            --arg sf_url "${SF_URL:-}" \
+            --arg sf_login "${SF_LOGIN:-}" \
+            --arg sf_password "${SF_PASSWORD:-}" \
+            --arg github_run_id "${{ github.run_id }}" \
+            --arg github_actor "${{ github.actor }}" \
+            --arg github_ref "${{ github.ref }}" \
+            '{
+              "environment": $ambiente,
+              "credentials": {
+                "sf_url": $sf_url,
+                "sf_login": $sf_login,
+                "sf_password": $sf_password
+              },
+              "source": "github-actions",
+              "github_run_id": $github_run_id,
+              "github_actor": $github_actor,
+              "github_ref": $github_ref
+            }')
+          
+          echo "📤 Sending payload to N8N..."
+          RESPONSE=$(curl -sS \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$N8N_WEBHOOK_URL")
+          
+          echo "✅ N8N Response:"
+          echo "$RESPONSE" | jq . || echo "$RESPONSE"
+          
+          # Extract execution ID if available
+          EXEC_ID=$(echo "$RESPONSE" | jq -r '.id // .execution_id // empty' 2>/dev/null || true)
+          
+          if [ -n "$EXEC_ID" ]; then
+            echo "📊 Execution ID: $EXEC_ID"
+            echo "execution_id=$EXEC_ID" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Show N8N Webhook Info
+        run: |
+          echo "✨ N8N Workflow has been triggered!"
+          echo ""
+          echo "📝 Monitor your tests at: http://localhost:5678 (or your N8N instance)"
+          echo ""
+          echo "Discord notification will be sent with the test results"
