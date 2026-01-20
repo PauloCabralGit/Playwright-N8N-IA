@@ -69,9 +69,13 @@ jobs:
           # Compose auth/options for curl (avoid nested quoting by using @file)
           printf '%s' "$PAYLOAD" > payload-start.json
           C_OPTS=( -sS -X POST -H "Content-Type: application/json" )
-          # Prefer custom header if provided; otherwise use default secret header
+          # Prefer Basic Auth if provided; otherwise use custom header or default secret header
           USED_AUTH="none"
-          if [ -n "$N8N_WEBHOOK_HEADER_NAME" ] && [ -n "$N8N_WEBHOOK_HEADER_VALUE" ]; then
+          if [ -n "$N8N_WEBHOOK_BASIC_USER" ] && [ -n "$N8N_WEBHOOK_BASIC_PASS" ]; then
+            C_OPTS+=( -u "${N8N_WEBHOOK_BASIC_USER}:${N8N_WEBHOOK_BASIC_PASS}" )
+            USED_AUTH="basic_auth"
+            echo "Using Basic Auth: user_len=$(echo -n "$N8N_WEBHOOK_BASIC_USER" | wc -c), pass_len=$(echo -n "$N8N_WEBHOOK_BASIC_PASS" | wc -c)"
+          elif [ -n "$N8N_WEBHOOK_HEADER_NAME" ] && [ -n "$N8N_WEBHOOK_HEADER_VALUE" ]; then
             HEADER_NAME_TRIM=$(printf '%s' "$N8N_WEBHOOK_HEADER_NAME" | tr -d '\r')
             HEADER_VALUE_TRIM=$(printf '%s' "$N8N_WEBHOOK_HEADER_VALUE" | tr -d '\r')
             C_OPTS+=( -H "$HEADER_NAME_TRIM: $HEADER_VALUE_TRIM" )
@@ -81,7 +85,6 @@ jobs:
             C_OPTS+=( -H "X-N8N-Webhook-Secret: $N8N_WEBHOOK_SECRET" )
             USED_AUTH="secret_header"
           fi
-          if [ -n "$N8N_WEBHOOK_BASIC_USER" ] && [ -n "$N8N_WEBHOOK_BASIC_PASS" ]; then C_OPTS+=( -u "${N8N_WEBHOOK_BASIC_USER}:${N8N_WEBHOOK_BASIC_PASS}" ); fi
           echo "Calling $N8N_WEBHOOK_URL (start) with auth=$USED_AUTH"
           HTTP_CODE=$(curl "${C_OPTS[@]}" --data @payload-start.json -w "%{http_code}" -o response-start.txt "$N8N_WEBHOOK_URL" || true)
           echo "HTTP $HTTP_CODE"; echo "Response:"; cat response-start.txt || true
@@ -130,9 +133,13 @@ jobs:
           # Compose auth/options for curl (avoid nested quoting by using @file)
           printf '%s' "$PAYLOAD" > payload-finish.json
           C_OPTS=( -sS -X POST -H "Content-Type: application/json" )
-          # Prefer custom header if provided; otherwise use default secret header
+          # Prefer Basic Auth if provided; otherwise use custom header or default secret header
           USED_AUTH="none"
-          if [ -n "$N8N_WEBHOOK_HEADER_NAME" ] && [ -n "$N8N_WEBHOOK_HEADER_VALUE" ]; then
+          if [ -n "$N8N_WEBHOOK_BASIC_USER" ] && [ -n "$N8N_WEBHOOK_BASIC_PASS" ]; then
+            C_OPTS+=( -u "${N8N_WEBHOOK_BASIC_USER}:${N8N_WEBHOOK_BASIC_PASS}" )
+            USED_AUTH="basic_auth"
+            echo "Using Basic Auth: user_len=$(echo -n "$N8N_WEBHOOK_BASIC_USER" | wc -c), pass_len=$(echo -n "$N8N_WEBHOOK_BASIC_PASS" | wc -c)"
+          elif [ -n "$N8N_WEBHOOK_HEADER_NAME" ] && [ -n "$N8N_WEBHOOK_HEADER_VALUE" ]; then
             HEADER_NAME_TRIM=$(printf '%s' "$N8N_WEBHOOK_HEADER_NAME" | tr -d '\r')
             HEADER_VALUE_TRIM=$(printf '%s' "$N8N_WEBHOOK_HEADER_VALUE" | tr -d '\r')
             C_OPTS+=( -H "$HEADER_NAME_TRIM: $HEADER_VALUE_TRIM" )
@@ -142,7 +149,6 @@ jobs:
             C_OPTS+=( -H "X-N8N-Webhook-Secret: $N8N_WEBHOOK_SECRET" )
             USED_AUTH="secret_header"
           fi
-          if [ -n "$N8N_WEBHOOK_BASIC_USER" ] && [ -n "$N8N_WEBHOOK_BASIC_PASS" ]; then C_OPTS+=( -u "${N8N_WEBHOOK_BASIC_USER}:${N8N_WEBHOOK_BASIC_PASS}" ); fi
           echo "Calling $N8N_WEBHOOK_URL (finish) with auth=$USED_AUTH"
           HTTP_CODE=$(curl "${C_OPTS[@]}" --data @payload-finish.json -w "%{http_code}" -o response-finish.txt "$N8N_WEBHOOK_URL" || true)
           echo "HTTP $HTTP_CODE"; echo "Response:"; cat response-finish.txt || true
