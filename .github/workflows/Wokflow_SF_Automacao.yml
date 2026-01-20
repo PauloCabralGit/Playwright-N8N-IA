@@ -66,11 +66,12 @@ jobs:
             --arg ambiente "$AMBIENTE" \
             '{event:$event, repo:$repo, workflow:$workflow, run_id:$run_id, run_attempt:$run_attempt, run_url:$run_url, sha:$sha, ref:$ref, actor:$actor, started_at:$started_at, ambiente:$ambiente}'
           )
-          # Compose auth/options for curl
+          # Compose auth/options for curl (avoid nested quoting by using @file)
+          printf '%s' "$PAYLOAD" > payload-start.json
           C_OPTS=( -sS -X POST -H "Content-Type: application/json" )
           if [ -n "$N8N_WEBHOOK_SECRET" ]; then C_OPTS+=( -H "X-N8N-Webhook-Secret: $N8N_WEBHOOK_SECRET" ); fi
           if [ -n "$N8N_WEBHOOK_BASIC_USER" ] && [ -n "$N8N_WEBHOOK_BASIC_PASS" ]; then C_OPTS+=( -u "${N8N_WEBHOOK_BASIC_USER}:${N8N_WEBHOOK_BASIC_PASS}" ); fi
-          bash -lc "curl \"${C_OPTS[@]}\" --data '$PAYLOAD' '$N8N_WEBHOOK_URL'"
+          curl "${C_OPTS[@]}" --data @payload-start.json "$N8N_WEBHOOK_URL"
 
       - name: Run Playwright tests
         id: tests
@@ -113,8 +114,9 @@ jobs:
             --arg ambiente "$AMBIENTE" \
             '{event:$event, repo:$repo, workflow:$workflow, run_id:$run_id, run_attempt:$run_attempt, run_url:$run_url, sha:$sha, ref:$ref, actor:$actor, status:$status, conclusion:$conclusion, finished_at:$finished_at, ambiente:$ambiente}'
           )
-          # Compose auth/options for curl
+          # Compose auth/options for curl (avoid nested quoting by using @file)
+          printf '%s' "$PAYLOAD" > payload-finish.json
           C_OPTS=( -sS -X POST -H "Content-Type: application/json" )
           if [ -n "$N8N_WEBHOOK_SECRET" ]; then C_OPTS+=( -H "X-N8N-Webhook-Secret: $N8N_WEBHOOK_SECRET" ); fi
           if [ -n "$N8N_WEBHOOK_BASIC_USER" ] && [ -n "$N8N_WEBHOOK_BASIC_PASS" ]; then C_OPTS+=( -u "${N8N_WEBHOOK_BASIC_USER}:${N8N_WEBHOOK_BASIC_PASS}" ); fi
-          bash -lc "curl \"${C_OPTS[@]}\" --data '$PAYLOAD' '$N8N_WEBHOOK_URL'"
+          curl "${C_OPTS[@]}" --data @payload-finish.json "$N8N_WEBHOOK_URL"
