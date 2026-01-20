@@ -17,8 +17,8 @@ jobs:
     env:
       N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
       N8N_WEBHOOK_SECRET: ${{ secrets.N8N_WEBHOOK_SECRET }}
-      N8N_WEBHOOK_HEADER_NAME: ${{ secrets.N8N_WEBHOOK_HEADER_NAME }}
-      N8N_WEBHOOK_HEADER_VALUE: ${{ secrets.N8N_WEBHOOK_HEADER_VALUE }}
+      N8N_WEBHOOK_BASIC_USER: ${{ secrets.N8N_WEBHOOK_BASIC_USER }}
+      N8N_WEBHOOK_BASIC_PASS: ${{ secrets.N8N_WEBHOOK_BASIC_PASS }}
       RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - name: Checkout
