@@ -1,7 +1,15 @@
 name: CI Playwright
 
 on:
+  push:
+    branches: [ main ]
+  pull_request:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to test (preprod/prod)'
+        required: false
+        default: 'preprod'
 
 jobs:
   test:
@@ -25,9 +33,20 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
+      - name: Create .env from secrets (optional)
+        run: |
+          cat > .env << EOF
+          SALESFORCE_URL=${{ secrets.SALESFORCE_URL }}
+          SALESFORCE_EMAIL=${{ secrets.SALESFORCE_EMAIL }}
+          SALESFORCE_PASSWORD=${{ secrets.SALESFORCE_PASSWORD }}
+          EOF
+          echo "Created .env with SALESFORCE_* entries (values hidden)."
+
       - name: Send start webhook
         if: ${{ env.N8N_WEBHOOK_URL != '' }}
         run: |
+          AMBIENTE="${{ github.event.inputs.environment }}"
+          if [ -z "$AMBIENTE" ]; then AMBIENTE="preprod"; fi
           STARTED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           PAYLOAD=$(jq -n \
             --arg event "run_started" \
@@ -40,7 +59,7 @@ jobs:
             --arg ref "${{ github.ref }}" \
             --arg actor "${{ github.actor }}" \
             --arg started_at "$STARTED_AT" \
-            --arg ambiente "preprod" \
+            --arg ambiente "$AMBIENTE" \
             '{event:$event, repo:$repo, workflow:$workflow, run_id:$run_id, run_attempt:$run_attempt, run_url:$run_url, sha:$sha, ref:$ref, actor:$actor, started_at:$started_at, ambiente:$ambiente}'
           )
           HDR_SECRET=""
@@ -64,6 +83,8 @@ jobs:
       - name: Send finish webhook
         if: ${{ always() && env.N8N_WEBHOOK_URL != '' }}
         run: |
+          AMBIENTE="${{ github.event.inputs.environment }}"
+          if [ -z "$AMBIENTE" ]; then AMBIENTE="preprod"; fi
           FINISHED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           STATUS="${{ job.status }}"
           # conclusion best-effort based on step result
@@ -81,7 +102,7 @@ jobs:
             --arg status "$STATUS" \
             --arg conclusion "$CONCLUSION" \
             --arg finished_at "$FINISHED_AT" \
-            --arg ambiente "preprod" \
+            --arg ambiente "$AMBIENTE" \
             '{event:$event, repo:$repo, workflow:$workflow, run_id:$run_id, run_attempt:$run_attempt, run_url:$run_url, sha:$sha, ref:$ref, actor:$actor, status:$status, conclusion:$conclusion, finished_at:$finished_at, ambiente:$ambiente}'
           )
           HDR_SECRET=""
