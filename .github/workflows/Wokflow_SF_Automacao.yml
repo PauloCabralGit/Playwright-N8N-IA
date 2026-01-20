@@ -17,8 +17,6 @@ jobs:
     env:
       N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
       N8N_WEBHOOK_SECRET: ${{ secrets.N8N_WEBHOOK_SECRET }}
-      N8N_WEBHOOK_BASIC_USER: ${{ secrets.N8N_WEBHOOK_BASIC_USER }}
-      N8N_WEBHOOK_BASIC_PASS: ${{ secrets.N8N_WEBHOOK_BASIC_PASS }}
       N8N_WEBHOOK_HEADER_NAME: ${{ secrets.N8N_WEBHOOK_HEADER_NAME }}
       N8N_WEBHOOK_HEADER_VALUE: ${{ secrets.N8N_WEBHOOK_HEADER_VALUE }}
       RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -72,13 +70,19 @@ jobs:
           printf '%s' "$PAYLOAD" > payload-start.json
           C_OPTS=( -sS -X POST -H "Content-Type: application/json" )
           # Prefer custom header if provided; otherwise use default secret header
+          USED_AUTH="none"
           if [ -n "$N8N_WEBHOOK_HEADER_NAME" ] && [ -n "$N8N_WEBHOOK_HEADER_VALUE" ]; then
-            C_OPTS+=( -H "$N8N_WEBHOOK_HEADER_NAME: $N8N_WEBHOOK_HEADER_VALUE" )
+            HEADER_NAME_TRIM=$(printf '%s' "$N8N_WEBHOOK_HEADER_NAME" | tr -d '\r')
+            HEADER_VALUE_TRIM=$(printf '%s' "$N8N_WEBHOOK_HEADER_VALUE" | tr -d '\r')
+            C_OPTS+=( -H "$HEADER_NAME_TRIM: $HEADER_VALUE_TRIM" )
+            USED_AUTH="custom_header"
+            echo "Using custom header: name_len=$(echo -n "$HEADER_NAME_TRIM" | wc -c), value_len=$(echo -n "$HEADER_VALUE_TRIM" | wc -c), bearer_prefix=$(printf '%s' "$HEADER_VALUE_TRIM" | grep -q '^Bearer ' && echo yes || echo no)"
           elif [ -n "$N8N_WEBHOOK_SECRET" ]; then
             C_OPTS+=( -H "X-N8N-Webhook-Secret: $N8N_WEBHOOK_SECRET" )
+            USED_AUTH="secret_header"
           fi
           if [ -n "$N8N_WEBHOOK_BASIC_USER" ] && [ -n "$N8N_WEBHOOK_BASIC_PASS" ]; then C_OPTS+=( -u "${N8N_WEBHOOK_BASIC_USER}:${N8N_WEBHOOK_BASIC_PASS}" ); fi
-          echo "Calling $N8N_WEBHOOK_URL (start)"
+          echo "Calling $N8N_WEBHOOK_URL (start) with auth=$USED_AUTH"
           HTTP_CODE=$(curl "${C_OPTS[@]}" --data @payload-start.json -w "%{http_code}" -o response-start.txt "$N8N_WEBHOOK_URL" || true)
           echo "HTTP $HTTP_CODE"; echo "Response:"; cat response-start.txt || true
 
@@ -127,12 +131,18 @@ jobs:
           printf '%s' "$PAYLOAD" > payload-finish.json
           C_OPTS=( -sS -X POST -H "Content-Type: application/json" )
           # Prefer custom header if provided; otherwise use default secret header
+          USED_AUTH="none"
           if [ -n "$N8N_WEBHOOK_HEADER_NAME" ] && [ -n "$N8N_WEBHOOK_HEADER_VALUE" ]; then
-            C_OPTS+=( -H "$N8N_WEBHOOK_HEADER_NAME: $N8N_WEBHOOK_HEADER_VALUE" )
+            HEADER_NAME_TRIM=$(printf '%s' "$N8N_WEBHOOK_HEADER_NAME" | tr -d '\r')
+            HEADER_VALUE_TRIM=$(printf '%s' "$N8N_WEBHOOK_HEADER_VALUE" | tr -d '\r')
+            C_OPTS+=( -H "$HEADER_NAME_TRIM: $HEADER_VALUE_TRIM" )
+            USED_AUTH="custom_header"
+            echo "Using custom header: name_len=$(echo -n "$HEADER_NAME_TRIM" | wc -c), value_len=$(echo -n "$HEADER_VALUE_TRIM" | wc -c), bearer_prefix=$(printf '%s' "$HEADER_VALUE_TRIM" | grep -q '^Bearer ' && echo yes || echo no)"
           elif [ -n "$N8N_WEBHOOK_SECRET" ]; then
             C_OPTS+=( -H "X-N8N-Webhook-Secret: $N8N_WEBHOOK_SECRET" )
+            USED_AUTH="secret_header"
           fi
           if [ -n "$N8N_WEBHOOK_BASIC_USER" ] && [ -n "$N8N_WEBHOOK_BASIC_PASS" ]; then C_OPTS+=( -u "${N8N_WEBHOOK_BASIC_USER}:${N8N_WEBHOOK_BASIC_PASS}" ); fi
-          echo "Calling $N8N_WEBHOOK_URL (finish)"
+          echo "Calling $N8N_WEBHOOK_URL (finish) with auth=$USED_AUTH"
           HTTP_CODE=$(curl "${C_OPTS[@]}" --data @payload-finish.json -w "%{http_code}" -o response-finish.txt "$N8N_WEBHOOK_URL" || true)
           echo "HTTP $HTTP_CODE"; echo "Response:"; cat response-finish.txt || true
