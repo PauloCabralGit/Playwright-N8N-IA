@@ -17,6 +17,8 @@ jobs:
     env:
       N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
       N8N_WEBHOOK_SECRET: ${{ secrets.N8N_WEBHOOK_SECRET }}
+      N8N_WEBHOOK_BASIC_USER: ${{ secrets.N8N_WEBHOOK_BASIC_USER }}
+      N8N_WEBHOOK_BASIC_PASS: ${{ secrets.N8N_WEBHOOK_BASIC_PASS }}
       RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - name: Checkout
@@ -64,9 +66,11 @@ jobs:
             --arg ambiente "$AMBIENTE" \
             '{event:$event, repo:$repo, workflow:$workflow, run_id:$run_id, run_attempt:$run_attempt, run_url:$run_url, sha:$sha, ref:$ref, actor:$actor, started_at:$started_at, ambiente:$ambiente}'
           )
-          HDR_SECRET=""
-          if [ -n "$N8N_WEBHOOK_SECRET" ]; then HDR_SECRET="-H 'X-N8N-Webhook-Secret: $N8N_WEBHOOK_SECRET'"; fi
-          bash -lc "curl -sS -X POST -H 'Content-Type: application/json' $HDR_SECRET --data '$PAYLOAD' '$N8N_WEBHOOK_URL'"
+          # Compose auth/options for curl
+          C_OPTS=( -sS -X POST -H "Content-Type: application/json" )
+          if [ -n "$N8N_WEBHOOK_SECRET" ]; then C_OPTS+=( -H "X-N8N-Webhook-Secret: $N8N_WEBHOOK_SECRET" ); fi
+          if [ -n "$N8N_WEBHOOK_BASIC_USER" ] && [ -n "$N8N_WEBHOOK_BASIC_PASS" ]; then C_OPTS+=( -u "${N8N_WEBHOOK_BASIC_USER}:${N8N_WEBHOOK_BASIC_PASS}" ); fi
+          bash -lc "curl \"${C_OPTS[@]}\" --data '$PAYLOAD' '$N8N_WEBHOOK_URL'"
 
       - name: Run Playwright tests
         id: tests
@@ -109,6 +113,8 @@ jobs:
             --arg ambiente "$AMBIENTE" \
             '{event:$event, repo:$repo, workflow:$workflow, run_id:$run_id, run_attempt:$run_attempt, run_url:$run_url, sha:$sha, ref:$ref, actor:$actor, status:$status, conclusion:$conclusion, finished_at:$finished_at, ambiente:$ambiente}'
           )
-          HDR_SECRET=""
-          if [ -n "$N8N_WEBHOOK_SECRET" ]; then HDR_SECRET="-H 'X-N8N-Webhook-Secret: $N8N_WEBHOOK_SECRET'"; fi
-          bash -lc "curl -sS -X POST -H 'Content-Type: application/json' $HDR_SECRET --data '$PAYLOAD' '$N8N_WEBHOOK_URL'"
+          # Compose auth/options for curl
+          C_OPTS=( -sS -X POST -H "Content-Type: application/json" )
+          if [ -n "$N8N_WEBHOOK_SECRET" ]; then C_OPTS+=( -H "X-N8N-Webhook-Secret: $N8N_WEBHOOK_SECRET" ); fi
+          if [ -n "$N8N_WEBHOOK_BASIC_USER" ] && [ -n "$N8N_WEBHOOK_BASIC_PASS" ]; then C_OPTS+=( -u "${N8N_WEBHOOK_BASIC_USER}:${N8N_WEBHOOK_BASIC_PASS}" ); fi
+          bash -lc "curl \"${C_OPTS[@]}\" --data '$PAYLOAD' '$N8N_WEBHOOK_URL'"
