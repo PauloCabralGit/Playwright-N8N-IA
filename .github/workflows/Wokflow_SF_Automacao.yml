@@ -71,10 +71,16 @@ jobs:
           # Compose auth/options for curl (avoid nested quoting by using @file)
           printf '%s' "$PAYLOAD" > payload-start.json
           C_OPTS=( -sS -X POST -H "Content-Type: application/json" )
-          if [ -n "$N8N_WEBHOOK_SECRET" ]; then C_OPTS+=( -H "X-N8N-Webhook-Secret: $N8N_WEBHOOK_SECRET" ); fi
-          if [ -n "$N8N_WEBHOOK_HEADER_NAME" ] && [ -n "$N8N_WEBHOOK_HEADER_VALUE" ]; then C_OPTS+=( -H "$N8N_WEBHOOK_HEADER_NAME: $N8N_WEBHOOK_HEADER_VALUE" ); fi
+          # Prefer custom header if provided; otherwise use default secret header
+          if [ -n "$N8N_WEBHOOK_HEADER_NAME" ] && [ -n "$N8N_WEBHOOK_HEADER_VALUE" ]; then
+            C_OPTS+=( -H "$N8N_WEBHOOK_HEADER_NAME: $N8N_WEBHOOK_HEADER_VALUE" )
+          elif [ -n "$N8N_WEBHOOK_SECRET" ]; then
+            C_OPTS+=( -H "X-N8N-Webhook-Secret: $N8N_WEBHOOK_SECRET" )
+          fi
           if [ -n "$N8N_WEBHOOK_BASIC_USER" ] && [ -n "$N8N_WEBHOOK_BASIC_PASS" ]; then C_OPTS+=( -u "${N8N_WEBHOOK_BASIC_USER}:${N8N_WEBHOOK_BASIC_PASS}" ); fi
-          curl "${C_OPTS[@]}" --data @payload-start.json "$N8N_WEBHOOK_URL"
+          echo "Calling $N8N_WEBHOOK_URL (start)"
+          HTTP_CODE=$(curl "${C_OPTS[@]}" --data @payload-start.json -w "%{http_code}" -o response-start.txt "$N8N_WEBHOOK_URL" || true)
+          echo "HTTP $HTTP_CODE"; echo "Response:"; cat response-start.txt || true
 
       - name: Run Playwright tests
         id: tests
@@ -120,7 +126,13 @@ jobs:
           # Compose auth/options for curl (avoid nested quoting by using @file)
           printf '%s' "$PAYLOAD" > payload-finish.json
           C_OPTS=( -sS -X POST -H "Content-Type: application/json" )
-          if [ -n "$N8N_WEBHOOK_SECRET" ]; then C_OPTS+=( -H "X-N8N-Webhook-Secret: $N8N_WEBHOOK_SECRET" ); fi
-          if [ -n "$N8N_WEBHOOK_HEADER_NAME" ] && [ -n "$N8N_WEBHOOK_HEADER_VALUE" ]; then C_OPTS+=( -H "$N8N_WEBHOOK_HEADER_NAME: $N8N_WEBHOOK_HEADER_VALUE" ); fi
+          # Prefer custom header if provided; otherwise use default secret header
+          if [ -n "$N8N_WEBHOOK_HEADER_NAME" ] && [ -n "$N8N_WEBHOOK_HEADER_VALUE" ]; then
+            C_OPTS+=( -H "$N8N_WEBHOOK_HEADER_NAME: $N8N_WEBHOOK_HEADER_VALUE" )
+          elif [ -n "$N8N_WEBHOOK_SECRET" ]; then
+            C_OPTS+=( -H "X-N8N-Webhook-Secret: $N8N_WEBHOOK_SECRET" )
+          fi
           if [ -n "$N8N_WEBHOOK_BASIC_USER" ] && [ -n "$N8N_WEBHOOK_BASIC_PASS" ]; then C_OPTS+=( -u "${N8N_WEBHOOK_BASIC_USER}:${N8N_WEBHOOK_BASIC_PASS}" ); fi
-          curl "${C_OPTS[@]}" --data @payload-finish.json "$N8N_WEBHOOK_URL"
+          echo "Calling $N8N_WEBHOOK_URL (finish)"
+          HTTP_CODE=$(curl "${C_OPTS[@]}" --data @payload-finish.json -w "%{http_code}" -o response-finish.txt "$N8N_WEBHOOK_URL" || true)
+          echo "HTTP $HTTP_CODE"; echo "Response:"; cat response-finish.txt || true
