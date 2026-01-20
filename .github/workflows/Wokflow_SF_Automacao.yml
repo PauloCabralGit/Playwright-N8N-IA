@@ -47,6 +47,8 @@ jobs:
         run: |
           AMBIENTE="${{ github.event.inputs.environment }}"
           if [ -z "$AMBIENTE" ]; then AMBIENTE="preprod"; fi
+          sudo apt-get update >/dev/null
+          sudo apt-get install -y jq >/dev/null
           STARTED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           PAYLOAD=$(jq -n \
             --arg event "run_started" \
@@ -85,6 +87,8 @@ jobs:
         run: |
           AMBIENTE="${{ github.event.inputs.environment }}"
           if [ -z "$AMBIENTE" ]; then AMBIENTE="preprod"; fi
+          sudo apt-get update >/dev/null
+          sudo apt-get install -y jq >/dev/null
           FINISHED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           STATUS="${{ job.status }}"
           # conclusion best-effort based on step result
