@@ -1,0 +1,452 @@
+{
+  "name": "Playwright Tests + Discord Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "github-tests",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b72c4739-755b-44d0-80ac-a16a37465dd6",
+      "name": "GitHub Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -976,
+        160
+      ],
+      "webhookId": "1dece711-a74d-4e94-8703-ac4193aebe58"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:9998/run-tests",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer test-key-123"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "id": "f990cb24-a442-484f-aada-4385bf87629b",
+      "name": "Start Test",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -720,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "id": "95a4579c-40ea-458d-9179-cac38754601b",
+      "name": "Wait 10 seconds",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -528,
+        160
+      ],
+      "webhookId": "7684819a-b85b-4aa7-89aa-f506fbe68ff9"
+    },
+    {
+      "parameters": {
+        "url": "=http://host.docker.internal:9998/execution-details/{{ $('Start Test').item.json.execution_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer test-key-123"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ada42916-246b-4b57-aff5-9017a57fc342",
+      "name": "Poll Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        224,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "comparator": "equals",
+              "value1": "={{ $json.status }}",
+              "value2": "completed"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "aa2b06dd-a7da-425e-8e17-3671b370fcc3",
+      "name": "Success?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        400,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('GitHub Webhook').item.json.webhookUrl }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "id": "6a53542c-1719-4b8e-bd3d-b6eeaeb7f76b",
+      "name": "Discord Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "id": "ff4e5ec9-43f9-4809-8d0d-4363ae603cb3",
+      "name": "Discord Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        576,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "4121a866-9013-4d27-af2f-12dafb0d6eb2",
+      "name": "Return Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        800,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "guildId": {
+          "__rl": true,
+          "value": "1425907453588930683",
+          "mode": "list",
+          "cachedResultName": "Servidor de testeHitss",
+          "cachedResultUrl": "https://discord.com/channels/1425907453588930683"
+        },
+        "channelId": {
+          "__rl": true,
+          "value": "1425912272605417625",
+          "mode": "list",
+          "cachedResultName": "geral",
+          "cachedResultUrl": "https://discord.com/channels/1425907453588930683/1425912272605417625"
+        },
+        "content": "={{ $('AI Agent').item.json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        144
+      ],
+      "id": "972c45d7-c473-4c58-9072-f4ac8cd43bb4",
+      "name": "Send a message",
+      "webhookId": "a6e3c713-c1a6-462f-b27d-d896f00bb548",
+      "credentials": {
+        "discordBotApi": {
+          "id": "Zt4CKPPZUyx9dj8w",
+          "name": "Discord Bot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Olá, Os testes foram iniciados",
+        "options": {
+          "systemMessage": "=Voce e um sistema expecialista em testes e que verifica minhas execuções do meu Actions do github, voce sinaliza todas as execuções e relata tudo que esta acontecendo na execução, se o teste passou ou falhou entre outros. Voce sempre ira me sinalizar no discord.",
+          "enableStreaming": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -320,
+        160
+      ],
+      "id": "3fd86f3e-472d-407c-ad3c-f6dfe8ddd697",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        384
+      ],
+      "id": "004a4670-d97d-4d2f-8c86-f71ca61ce142",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "WhKZyWGY6d5CDQxl",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('GitHub Webhook').item.json.headers.connection }}{{ $('GitHub Webhook').item.json.body.ambiente }}{{ $('GitHub Webhook').item.json.query }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -192,
+        384
+      ],
+      "id": "68ae37db-2cc8-43a3-81bb-2ba742003981",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "guildId": {
+          "__rl": true,
+          "value": "1425907453588930683",
+          "mode": "list",
+          "cachedResultName": "Servidor de testeHitss",
+          "cachedResultUrl": "https://discord.com/channels/1425907453588930683"
+        },
+        "channelId": {
+          "__rl": true,
+          "value": "1425912272605417625",
+          "mode": "list",
+          "cachedResultName": "geral",
+          "cachedResultUrl": "https://discord.com/channels/1425907453588930683/1425912272605417625"
+        },
+        "content": "={{ $('AI Agent').item.json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        16,
+        160
+      ],
+      "id": "36aa407b-790b-492a-acdb-544b43ff0caa",
+      "name": "Send a message1",
+      "webhookId": "a6e3c713-c1a6-462f-b27d-d896f00bb548",
+      "credentials": {
+        "discordBotApi": {
+          "id": "Zt4CKPPZUyx9dj8w",
+          "name": "Discord Bot account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "GitHub Webhook": {
+      "main": [
+        [
+          {
+            "node": "Start Test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start Test": {
+      "main": [
+        [
+          {
+            "node": "Wait 10 seconds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 10 seconds": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll Status": {
+      "main": [
+        [
+          {
+            "node": "Success?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success?": {
+      "main": [
+        [
+          {
+            "node": "Discord Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Discord Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord Failure": {
+      "main": [
+        [
+          {
+            "node": "Return Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord Success": {
+      "main": [
+        [
+          {
+            "node": "Return Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return Response": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        []
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message1": {
+      "main": [
+        [
+          {
+            "node": "Poll Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "bc555d2c-33a4-40af-b700-57792e6770e2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b0e73dd85681bdb3a92e8c6bfb6fd124a854467ee1443f7aa274046b07171eb0"
+  },
+  "id": "oW1LA0OmhQ7nE_t1TvvEA",
+  "tags": []
+}
