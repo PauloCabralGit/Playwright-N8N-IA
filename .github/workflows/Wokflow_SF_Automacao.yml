@@ -19,6 +19,8 @@ jobs:
       N8N_WEBHOOK_SECRET: ${{ secrets.N8N_WEBHOOK_SECRET }}
       N8N_WEBHOOK_BASIC_USER: ${{ secrets.N8N_WEBHOOK_BASIC_USER }}
       N8N_WEBHOOK_BASIC_PASS: ${{ secrets.N8N_WEBHOOK_BASIC_PASS }}
+      N8N_WEBHOOK_HEADER_NAME: ${{ secrets.N8N_WEBHOOK_HEADER_NAME }}
+      N8N_WEBHOOK_HEADER_VALUE: ${{ secrets.N8N_WEBHOOK_HEADER_VALUE }}
       RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
       - name: Checkout
@@ -70,6 +72,7 @@ jobs:
           printf '%s' "$PAYLOAD" > payload-start.json
           C_OPTS=( -sS -X POST -H "Content-Type: application/json" )
           if [ -n "$N8N_WEBHOOK_SECRET" ]; then C_OPTS+=( -H "X-N8N-Webhook-Secret: $N8N_WEBHOOK_SECRET" ); fi
+          if [ -n "$N8N_WEBHOOK_HEADER_NAME" ] && [ -n "$N8N_WEBHOOK_HEADER_VALUE" ]; then C_OPTS+=( -H "$N8N_WEBHOOK_HEADER_NAME: $N8N_WEBHOOK_HEADER_VALUE" ); fi
           if [ -n "$N8N_WEBHOOK_BASIC_USER" ] && [ -n "$N8N_WEBHOOK_BASIC_PASS" ]; then C_OPTS+=( -u "${N8N_WEBHOOK_BASIC_USER}:${N8N_WEBHOOK_BASIC_PASS}" ); fi
           curl "${C_OPTS[@]}" --data @payload-start.json "$N8N_WEBHOOK_URL"
 
@@ -118,5 +121,6 @@ jobs:
           printf '%s' "$PAYLOAD" > payload-finish.json
           C_OPTS=( -sS -X POST -H "Content-Type: application/json" )
           if [ -n "$N8N_WEBHOOK_SECRET" ]; then C_OPTS+=( -H "X-N8N-Webhook-Secret: $N8N_WEBHOOK_SECRET" ); fi
+          if [ -n "$N8N_WEBHOOK_HEADER_NAME" ] && [ -n "$N8N_WEBHOOK_HEADER_VALUE" ]; then C_OPTS+=( -H "$N8N_WEBHOOK_HEADER_NAME: $N8N_WEBHOOK_HEADER_VALUE" ); fi
           if [ -n "$N8N_WEBHOOK_BASIC_USER" ] && [ -n "$N8N_WEBHOOK_BASIC_PASS" ]; then C_OPTS+=( -u "${N8N_WEBHOOK_BASIC_USER}:${N8N_WEBHOOK_BASIC_PASS}" ); fi
           curl "${C_OPTS[@]}" --data @payload-finish.json "$N8N_WEBHOOK_URL"
