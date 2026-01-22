@@ -51,12 +51,29 @@ jobs:
           npx playwright test
         continue-on-error: true
 
+      - name: Capture test status
+        if: always()
+        run: |
+          if [ "${{ steps.tests.outcome }}" = "success" ]; then
+            echo "exit_code=0" >> $GITHUB_OUTPUT
+          else
+            echo "exit_code=1" >> $GITHUB_OUTPUT
+          fi
+        id: test_status
+
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           path: playwright-report
+
+      - name: Get report URL
+        id: report
+        if: always()
+        run: |
+          REPORT_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts"
+          echo "report_url=$REPORT_URL" >> $GITHUB_OUTPUT
 
       - name: Send WebHook (n8n)
         if: ${{ always() && env.N8N_WEBHOOK_URL != '' }}
@@ -81,10 +98,11 @@ jobs:
             --arg actor "${{ github.actor }}" \
             --arg status "$STATUS" \
             --arg conclusion "$CONCLUSION" \
+            --arg test_exit_code "${{ steps.test_status.outputs.exit_code }}" \
+            --arg report_url "${{ steps.report.outputs.report_url }}" \
             --arg finished_at "$FINISHED_AT" \
             --arg ambiente "$AMBIENTE" \
-            '{event:$event, repo:$repo, workflow:$workflow, run_id:$run_id, run_attempt:$run_attempt, run_url:$run_url, sha:$sha, ref:$ref, actor:$actor, status:$status, conclusion:$conclusion, finished_at:$finished_at, ambiente:$ambiente}'
-          )
+            '{event:$event, repo:$repo, workflow:$workflow, run_id:$run_id, run_attempt:$run_attempt, run_url:$run_url, sha:$sha, ref:$ref, actor:$actor, status:$status, conclusion:$conclusion, test_exit_code:$test_exit_code, report_url:$report_url, finished_at:$finished_at, ambiente:$ambiente}')
           # Compose auth/options for curl (avoid nested quoting by using @file)
           printf '%s' "$PAYLOAD" > payload-finish.json
           C_OPTS=( -sS -X POST -H "Content-Type: application/json" )
