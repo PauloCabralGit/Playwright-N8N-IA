@@ -47,13 +47,16 @@ jobs:
       - name: Run Playwright tests
         id: tests
         run: |
-          set -e
-          npx playwright test || echo "::set-output name=test_failed::true"
+          # Remove set -e para capturar o status de saída corretamente
+          npx playwright test
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
         continue-on-error: true
 
       - name: Fail build if tests failed
-        if: steps.tests.outputs.test_failed == 'true'
-        run: exit 1
+        if: steps.tests.outputs.exit_code != '0'
+        run: |
+          echo "::error::Testes falharam com código de saída ${{ steps.tests.outputs.exit_code }}"
+          exit 1
 
       - name: Capture test status
         if: always()
