@@ -1,9 +1,5 @@
 name: CI Playwright
 
-# Desativar notificações por email
-notifications:
-  email: false
-
 on:
   push:
     branches: [ main ]
