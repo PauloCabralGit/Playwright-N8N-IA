@@ -1,5 +1,9 @@
 name: CI Playwright
 
+# Desativar notificações por email
+notifications:
+  email: false
+
 on:
   push:
     branches: [ main ]
@@ -84,9 +88,15 @@ jobs:
           sudo apt-get install -y jq >/dev/null
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           FINISHED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          STATUS="${{ job.status }}"
-          # conclusion best-effort based on step result
-          if [ "$STATUS" = "success" ]; then CONCLUSION="success"; else CONCLUSION="failure"; fi
+          # Use actual test result, not job status
+          TEST_STATUS="${{ steps.test_status.outputs.exit_code }}"
+          if [ "$TEST_STATUS" = "0" ]; then 
+            STATUS="success"
+            CONCLUSION="success"
+          else 
+            STATUS="failure"
+            CONCLUSION="failure"
+          fi
           PAYLOAD=$(jq -n \
             --arg event "run_finished" \
             --arg repo "${{ github.repository }}" \
