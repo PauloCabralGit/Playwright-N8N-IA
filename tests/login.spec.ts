@@ -35,7 +35,7 @@ test.describe('Salesforce Login', () => {
     const url = process.env.SALESFORCE_URL || process.env.SF_URL || settings?.url_SF_preprod || settings?.url_SF_uat || settings?.url_SF_dev;
     const username = process.env.SALESFORCE_EMAIL || process.env.SF_LOGIN || settings?.Login;
     const password = process.env.SALESFORCE_PASSWORD || process.env.SF_PASSWORD || settings?.Senha;
-    const emcCode = process.env.EMC_CODE || '123456';
+    const emcCode = process.env.EMC_CODE || '';
 
     if (!url || !username || !password) {
       throw new Error('Missing credentials or URL. Set SALESFORCE_URL, SALESFORCE_EMAIL and SALESFORCE_PASSWORD in .env file or set SF_URL, SF_LOGIN and SF_PASSWORD as env vars');

@@ -18,9 +18,9 @@ export class LoginPage {
 
   readonly loginButtonSelectors = [
     'input#Login',
-    'input[title="Login"]',
-    'button[name="Login"]',
-    'button[type="submit"]'
+    'input[title="Logi"]',
+    'button[name="Logi"]',
+    'button[type="submi"]'
   ];
 
   // Selectors para EMC (autenticação de segundo fator)
