@@ -13,7 +13,14 @@ export class LoginPage {
   readonly passwordSelectors = [
     'input#password',
     'input[name="pw"]',
-    'input[type="password"]'
+    'input[type="password"]',
+    'input.password',
+    'input[placeholder*="senha"]',
+    'input[placeholder*="password"]',
+    'input[data-test*="password"]',
+    'input[id*="password"]',
+    'input[name*="password"]',
+    'input[type=password]'
   ];
 
   readonly loginButtonSelectors = [
@@ -59,14 +66,67 @@ export class LoginPage {
   }
 
   async fillPassword(password: string): Promise<boolean> {
-    for (const sel of this.passwordSelectors) {
-      if (await this.page.locator(sel).count() > 0) {
-        console.log(`✏️  Preenchendo password com: ${sel}`);
-        await this.page.fill(sel, password);
-        return true;
+    console.log('🔍 Iniciando busca pelo campo de senha...');
+    
+    // Tenta cada seletor da lista
+    for (const selector of this.passwordSelectors) {
+      try {
+        console.log(`🔎 Tentando seletor: "${selector}"`);
+        const element = this.page.locator(selector);
+        const count = await element.count();
+        
+        if (count > 0) {
+          console.log(`✅ Encontrado ${count} elemento(s) com o seletor: "${selector}"`);
+          console.log(`✏️  Preenchendo senha usando: "${selector}"`);
+          
+          // Tenta preencher o campo
+          await element.fill(password);
+          
+          // Verifica se o valor foi preenchido corretamente
+          const filledValue = await element.inputValue();
+          if (filledValue === password) {
+            console.log('✅ Senha preenchida com sucesso!');
+            return true;
+          } else {
+            console.warn(`⚠️  O campo foi preenchido, mas o valor não corresponde ao esperado`);
+          }
+        } else {
+          console.log(`ℹ️  Nenhum elemento encontrado com: "${selector}"`);
+        }
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+        console.error(`❌ Erro ao tentar preencher com "${selector}":`, errorMessage);
       }
     }
-    console.warn('⚠️  Campo password não encontrado');
+    
+    // Se chegou aqui, nenhum seletor funcionou
+    console.error('❌ Nenhum dos seletores de senha funcionou. Tentando abordagem alternativa...');
+    
+    // Tenta uma abordagem mais genérica
+    try {
+      const allInputs = await this.page.$$('input');
+      console.log(`🔍 Encontrados ${allInputs.length} campos de input na página`);
+      
+      for (const input of allInputs) {
+        try {
+          const inputType = await input.getAttribute('type');
+          if (inputType === 'password') {
+            const inputId = await input.getAttribute('id') || await input.getAttribute('name') || 'sem-id';
+            console.log(`🔑 Encontrado campo de senha com type="password" (id/name: ${inputId})`);
+            await input.fill(password);
+            console.log('✅ Senha preenchida com sucesso usando busca genérica!');
+            return true;
+          }
+        } catch (error) {
+          // Continua para o próximo input
+        }
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      console.error('❌ Erro na abordagem genérica:', errorMessage);
+    }
+    
+    console.error('❌ Nenhum campo de senha pôde ser preenchido');
     return false;
   }
 
