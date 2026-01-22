@@ -48,8 +48,12 @@ jobs:
         id: tests
         run: |
           set -e
-          npx playwright test
+          npx playwright test || echo "::set-output name=test_failed::true"
         continue-on-error: true
+
+      - name: Fail build if tests failed
+        if: steps.tests.outputs.test_failed == 'true'
+        run: exit 1
 
       - name: Capture test status
         if: always()
