@@ -47,19 +47,9 @@ jobs:
       - name: Run Playwright tests
         id: tests
         run: |
-          # Executa os testes e captura o status de saída
-          set +e
-          npx playwright test
-          EXIT_CODE=$?
-          echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
-          
-          # Se os testes falharem, gera o relatório e falha o build
-          if [ $EXIT_CODE -ne 0 ]; then
-            echo "::error::Testes falharam com código de saída $EXIT_CODE"
-            # Força a geração do relatório HTML
-            npx playwright show-report || true
-            exit 1
-          fi
+          # Executa os testes e falha imediatamente em caso de erro
+          set -e
+          npx playwright test || (echo "::error::Testes do Playwright falharam" && exit 1)
 
       - name: Capture test status
         if: always()
