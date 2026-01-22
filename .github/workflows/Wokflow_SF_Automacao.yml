@@ -82,6 +82,7 @@ jobs:
           if [ -z "$AMBIENTE" ]; then AMBIENTE="preprod"; fi
           sudo apt-get update >/dev/null
           sudo apt-get install -y jq >/dev/null
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           FINISHED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           STATUS="${{ job.status }}"
           # conclusion best-effort based on step result
@@ -103,41 +104,6 @@ jobs:
             --arg finished_at "$FINISHED_AT" \
             --arg ambiente "$AMBIENTE" \
             '{event:$event, repo:$repo, workflow:$workflow, run_id:$run_id, run_attempt:$run_attempt, run_url:$run_url, sha:$sha, ref:$ref, actor:$actor, status:$status, conclusion:$conclusion, test_exit_code:$test_exit_code, report_url:$report_url, finished_at:$finished_at, ambiente:$ambiente}')
-          # Compose auth/options for curl (avoid nested quoting by using @file)
-          printf '%s' "$PAYLOAD" > payload-finish.json
-          C_OPTS=( -sS -X POST -H "Content-Type: application/json" )
-          # Prefer Basic Auth if provided; otherwise use custom header or default secret header
-          USED_AUTH="none"
-          if [ -n "$N8N_WEBHOOK_BASIC_USER" ] && [ -n "$N8N_WEBHOOK_BASIC_PASS" ]; then
-            C_OPTS+=( -u "${N8N_WEBHOOK_BASIC_USER}:${N8N_WEBHOOK_BASIC_PASS}" )
-            USED_AUTH="basic_auth"
-            echo "Using Basic Auth: user_len=$(echo -n "$N8N_WEBHOOK_BASIC_USER" | wc -c), pass_len=$(echo -n "$N8N_WEBHOOK_BASIC_PASS" | wc -c)"
-          elif [ -n "$N8N_WEBHOOK_HEADER_NAME" ] && [ -n "$N8N_WEBHOOK_HEADER_VALUE" ]; then
-            HEADER_NAME_TRIM=$(printf '%s' "$N8N_WEBHOOK_HEADER_NAME" | tr -d '\r')
-            HEADER_VALUE_TRIM=$(printf '%s' "$N8N_WEBHOOK_HEADER_VALUE" | tr -d '\r')
-            C_OPTS+=( -H "$HEADER_NAME_TRIM: $HEADER_VALUE_TRIM" )
-            USED_AUTH="custom_header"
-            echo "Using custom header: name_len=$(echo -n "$HEADER_NAME_TRIM" | wc -c), value_len=$(echo -n "$HEADER_VALUE_TRIM" | wc -c), bearer_prefix=$(printf '%s' "$HEADER_VALUE_TRIM" | grep -q '^Bearer ' && echo yes || echo no)"
-          elif [ -n "$N8N_WEBHOOK_SECRET" ]; then
-            C_OPTS+=( -H "X-N8N-Webhook-Secret: $N8N_WEBHOOK_SECRET" )
-            USED_AUTH="secret_header"
-          fi
-          echo "Calling $N8N_WEBHOOK_URL (finish) with auth=$USED_AUTH"
-          HTTP_CODE=$(curl "${C_OPTS[@]}" --data @payload-finish.json -w "%{http_code}" -o response-finish.txt "$N8N_WEBHOOK_URL" || true)
-          echo "HTTP $HTTP_CODE"; echo "Response:"; cat response-finish.txt || true
-            --arg workflow "${{ github.workflow }}" \
-            --arg run_id "${{ github.run_id }}" \
-            --arg run_attempt "${{ github.run_attempt }}" \
-            --arg run_url "$RUN_URL" \
-            --arg sha "${{ github.sha }}" \
-            --arg ref "${{ github.ref }}" \
-            --arg actor "${{ github.actor }}" \
-            --arg status "$STATUS" \
-            --arg conclusion "$CONCLUSION" \
-            --arg finished_at "$FINISHED_AT" \
-            --arg ambiente "$AMBIENTE" \
-            '{event:$event, repo:$repo, workflow:$workflow, run_id:$run_id, run_attempt:$run_attempt, run_url:$run_url, sha:$sha, ref:$ref, actor:$actor, status:$status, conclusion:$conclusion, finished_at:$finished_at, ambiente:$ambiente}'
-          )
           # Compose auth/options for curl (avoid nested quoting by using @file)
           printf '%s' "$PAYLOAD" > payload-finish.json
           C_OPTS=( -sS -X POST -H "Content-Type: application/json" )
