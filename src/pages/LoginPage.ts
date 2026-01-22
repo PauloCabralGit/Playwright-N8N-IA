@@ -66,6 +66,8 @@ export class LoginPage {
   }
 
   async fillPassword(password: string): Promise<boolean> {
+    // Usando uma string de máscara para a senha nos logs
+    const maskedPassword = '*'.repeat(Math.min(8, password.length));
     console.log('🔍 Iniciando busca pelo campo de senha...');
     
     // Tenta cada seletor da lista
@@ -77,25 +79,30 @@ export class LoginPage {
         
         if (count > 0) {
           console.log(`✅ Encontrado ${count} elemento(s) com o seletor: "${selector}"`);
-          console.log(`✏️  Preenchendo senha usando: "${selector}"`);
+          console.log(`✏️  Preenchendo campo de senha...`);
           
-          // Tenta preencher o campo
-          await element.fill(password);
+          // Tenta preencher o campo sem registrar a senha real
+          await element.evaluate((el: HTMLInputElement, pass: string) => {
+            el.value = pass;
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+          }, password);
           
-          // Verifica se o valor foi preenchido corretamente
+          // Verifica se o valor foi preenchido sem registrar a senha
           const filledValue = await element.inputValue();
           if (filledValue === password) {
-            console.log('✅ Senha preenchida com sucesso!');
+            console.log(`✅ Senha de ${maskedPassword}... preenchida com sucesso!`);
             return true;
           } else {
-            console.warn(`⚠️  O campo foi preenchido, mas o valor não corresponde ao esperado`);
+            console.warn('⚠️  O campo foi preenchido, mas o valor não corresponde ao esperado');
           }
         } else {
           console.log(`ℹ️  Nenhum elemento encontrado com: "${selector}"`);
         }
       } catch (error: unknown) {
+        // Não registre a senha real no log de erro
         const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-        console.error(`❌ Erro ao tentar preencher com "${selector}":`, errorMessage);
+        console.error(`❌ Erro ao tentar preencher o campo de senha com o seletor "${selector}"`);
       }
     }
     
@@ -113,8 +120,15 @@ export class LoginPage {
           if (inputType === 'password') {
             const inputId = await input.getAttribute('id') || await input.getAttribute('name') || 'sem-id';
             console.log(`🔑 Encontrado campo de senha com type="password" (id/name: ${inputId})`);
-            await input.fill(password);
-            console.log('✅ Senha preenchida com sucesso usando busca genérica!');
+            
+            // Usando evaluate para preencher sem registrar a senha nos logs do Playwright
+            await input.evaluate((el: HTMLInputElement, pass: string) => {
+              el.value = pass;
+              el.dispatchEvent(new Event('input', { bubbles: true }));
+              el.dispatchEvent(new Event('change', { bubbles: true }));
+            }, password);
+            
+            console.log(`✅ Senha de ${maskedPassword}... preenchida com sucesso!`);
             return true;
           }
         } catch (error) {
@@ -122,8 +136,7 @@ export class LoginPage {
         }
       }
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      console.error('❌ Erro na abordagem genérica:', errorMessage);
+      console.error('❌ Erro na abordagem genérica para encontrar campo de senha');
     }
     
     console.error('❌ Nenhum campo de senha pôde ser preenchido');
