@@ -27,7 +27,7 @@ client.on("messageCreate", async (message) => {
       });
 
       if (response.ok) {
-        message.reply("🚀 Comando enviado para o n8n!");
+        message.reply("");
       } else {
         message.reply("❌ Erro ao enviar para o n8n.");
       }
