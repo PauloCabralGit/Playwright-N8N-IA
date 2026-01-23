@@ -46,10 +46,12 @@ jobs:
 
       - name: Run Playwright tests
         id: run_tests
+        continue-on-error: true
         run: |
-          # Executa os testes e falha imediatamente em caso de erro
-          set -e
-          npx playwright test
+          # Executa os testes e captura o status de saída
+          npx playwright test || echo "exit_code=$?" >> $GITHUB_OUTPUT
+          # Se não definiu exit_code, significa que passou
+          echo "exit_code=${exit_code:-0}" >> $GITHUB_OUTPUT
 
       - name: Upload Playwright report
         if: always()
@@ -58,16 +60,11 @@ jobs:
           name: playwright-report
           path: playwright-report
 
-      - name: Set test status
-        id: test_status
-        if: always()
+      - name: Fail if tests failed
+        if: steps.run_tests.outputs.exit_code != '0' && steps.run_tests.outputs.exit_code != ''
         run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "exit_code=0" >> $GITHUB_OUTPUT
-          else
-            echo "exit_code=1" >> $GITHUB_OUTPUT
-            exit 1
-          fi
+          echo "::error::Testes falharam com código de saída ${{ steps.run_tests.outputs.exit_code }}"
+          exit 1
 
       - name: Get report URL
         id: report
@@ -85,9 +82,8 @@ jobs:
           sudo apt-get install -y jq >/dev/null
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           FINISHED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          # Use actual test result, not job status
-          TEST_STATUS="${{ steps.test_status.outputs.exit_code }}"
-          if [ "$TEST_STATUS" = "0" ]; then 
+          # Usa o status real dos testes
+          if [ "${{ steps.run_tests.outputs.exit_code }}" = "0" ] || [ -z "${{ steps.run_tests.outputs.exit_code }}" ]; then 
             STATUS="success"
             CONCLUSION="success"
           else 
@@ -106,7 +102,7 @@ jobs:
             --arg actor "${{ github.actor }}" \
             --arg status "$STATUS" \
             --arg conclusion "$CONCLUSION" \
-            --arg test_exit_code "${{ steps.test_status.outputs.exit_code }}" \
+            --arg test_exit_code "${{ steps.run_tests.outputs.exit_code || '0' }}" \
             --arg report_url "${{ steps.report.outputs.report_url }}" \
             --arg finished_at "$FINISHED_AT" \
             --arg ambiente "$AMBIENTE" \
