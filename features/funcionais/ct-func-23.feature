@@ -1,9 +1,9 @@
-# language: pt
+# language: en
 Feature: Geral
 
   @ct-func-23 @funcional
-  Cenário: teste
+  Scenario: TESTE
     # Objetivo: teste
-    Dado teste
-    Quando teste
-    Então teste
+    Given que as pré-condições do cenário estejam atendidas
+    When teste
+    Then teste
