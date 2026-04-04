@@ -1,9 +1,9 @@
-Feature: General Functional Test
+```gherkin
+Feature: General Module Functionality
 
-  This feature covers the basic functional test scenario for the application.
-
-  @CT-FUNC-26 @Funcional
-  Scenario: Verify test functionality
-    Given the application is launched and the user is on the main page
-    When the user performs the test action
-    Then the expected result is displayed on the screen
+  @CT-FUNC-26 @functional
+  Scenario: CT-FUNC-26 - Generic functionality test
+    Given I navigate to the General module page
+    When I perform the generic operation
+    Then I should see the expected result
+```
