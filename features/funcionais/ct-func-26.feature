@@ -1,9 +1,8 @@
-```gherkin
-Feature: General Module Functionality
+Feature: Functional Tests for the General Module
 
-  @CT-FUNC-26 @functional
-  Scenario: CT-FUNC-26 - Generic functionality test
-    Given I navigate to the General module page
-    When I perform the generic operation
-    Then I should see the expected result
-```
+  @CT-FUNC-26 @Functional
+  Scenario: Execute a placeholder test in the General module
+    Given I am logged into the application
+    And I navigate to the General module
+    When I run the test step
+    Then the application displays the expected result
