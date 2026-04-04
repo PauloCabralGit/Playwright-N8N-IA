@@ -1,8 +1,6 @@
-# language: en
-Feature: Geral
+Feature: General Functional Tests
+  This feature contains functional tests for the General module.
 
-  @ct-func-21 @funcional
-  Scenario: CT-FUNC-21
-    Given que as pré-condições do cenário estejam atendidas
-    When o usuário executa o fluxo principal
-    Then o resultado esperado deve ser apresentado
+@CT-FUNC-21 @Funcional
+Scenario: CT-FUNC-21
+  # No steps defined yet.
