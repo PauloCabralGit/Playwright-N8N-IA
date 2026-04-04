@@ -1,8 +1,7 @@
-Feature: Functional Tests for the General Module
+@CT-FUNC-26 @Funcional
+Feature: General Functional Test
 
-  @CT-FUNC-26 @Functional
-  Scenario: Execute a placeholder test in the General module
-    Given I am logged into the application
-    And I navigate to the General module
-    When I run the test step
-    Then the application displays the expected result
+  Scenario: Verify general functionality
+    Given I navigate to the application
+    When I perform the test action
+    Then I should see the expected result
