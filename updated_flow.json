@@ -1,0 +1,2170 @@
+{
+  "name": "QA Discord + Google Sheets - Final + IA",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "discord-qa",
+        "options": {}
+      },
+      "id": "4099ac34-fe7e-4e57-8565-1ed6b20b7ea3",
+      "name": "Webhook Discord",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        22976,
+        20272
+      ],
+      "webhookId": "783725c9-2169-4f37-8fdc-e9ca887cdb72"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "qa-platform/healthcheck",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "healthcheck-webhook",
+      "name": "Webhook Healthcheck",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        22976,
+        20448
+      ],
+      "webhookId": "healthcheck-webhook"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://mathilde-obcuneate-allusively.ngrok-free.dev/api/settings/n8n/config",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "ngrok-skip-browser-warning",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "load-config-node",
+      "name": "Load Config",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        23100,
+        20272
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $json || {};\n\nconst pickWebhook = () => {\n  const candidates = [\n    'Webhook Discord1',\n    'Webhook Next Status',\n    'Webhook Next Created',\n    'Webhook Discord',\n  ];\n\n  for (const name of candidates) {\n    try {\n      const value = $(name).first().json;\n      if (value && Object.keys(value).length > 0) return value;\n    } catch (e) {}\n  }\n\n  return {};\n};\n\nconst root = pickWebhook();\nconst body = root.body || {};\nconst options = body.options || {};\nconst scenario = root.scenario || body.scenario || {};\nconst card = root.card || body.card || {};\nconst acceptanceCriteria = Array.isArray(body.acceptanceCriteria)\n  ? body.acceptanceCriteria\n  : Array.isArray(card.acceptanceCriteria)\n    ? card.acceptanceCriteria\n    : [];\nconst scenarios = Array.isArray(body.scenarios)\n  ? body.scenarios\n  : Array.isArray(card.scenarios)\n    ? card.scenarios\n    : [];\nconst actionFromApi = root.action || body.action || body.command || root.command || '';\n\nconst inferredAction =\n  actionFromApi ||\n  (Array.isArray(body.scenarios) && body.scenarios.length ? 'create' : '') ||\n  (body.scenario ? 'create' : '') ||\n  (root.source === 'IA' && (body.id || root.id || scenario.id || card.title) ? 'create' : '') ||\n  'unknown';\n\nconst command = body.command || root.command || inferredAction || 'unknown';\n\nconst map = {\n  qa_buscar: 'buscar',\n  qa_ver: 'ver',\n  qa_add: 'adicionar',\n  qa_editar: 'editar',\n  qa_status: 'status',\n  qa_del: 'deletar',\n  qa_ia: 'ia',\n  pingqa: 'pingqa',\n  create: 'adicionar',\n  move: 'status',\n  update: 'status',\n  create_scenario: 'adicionar',\n  scenario_created: 'adicionar',\n  update_status: 'status',\n};\n\nconst appId = root.application_id || body.application_id || body.body?.application_id || '';\nconst interactionToken = root.interaction_token || body.interaction_token || body.token || body.body?.token || '';\nconst interactionId = root.interaction_id || body.interaction_id || body.id || body.body?.id || '';\nconst userValue = scenario.owner || body.user || root.user || 'api';\n\nconst inferredSheet =\n  options.aba ||\n  root.sheet ||\n  body.sheet ||\n  ((options.id || scenario.id || card.title || '').toUpperCase().startsWith('CT-PERF')\n    ? (config.googleSheetsPerformanceTab || 'Testes Performance')\n    : (config.googleSheetsFunctionalTab || 'Testes Funcionais'));\n\nreturn [{\n  json: {\n    ...root,\n    card,\n    acceptanceCriteria,\n    scenarios,\n    config,\n    action: map[command] || 'unknown',\n    text: options.texto || options.pergunta || root.text || card.businessGoal || '',\n    id: options.id || scenario.id || root.id || body.id || card.id || '',\n    status: options.status || root.status || body.status || scenario.status || card.status || '',\n    field: options.campo || root.field || '',\n    value: options.valor || root.value || '',\n    sheet: inferredSheet,\n    categoria: scenario.category || root.categoria || body.category || card.source || '',\n    modulo: scenario.module || root.modulo || body.module || card.module || '',\n    titulo: scenario.title || root.titulo || body.title || card.title || '',\n    objetivo: scenario.objective || root.objetivo || body.businessGoal || card.businessGoal || '',\n    precondicao: scenario.preconditions || root.precondicao || body.precondicao || card.qaNotes || '',\n    passos: scenario.steps || root.passos || body.passos || '',\n    resultado: scenario.expectedResult || root.resultado || body.resultado || acceptanceCriteria.join('\\n') || '',\n    tags: Array.isArray(scenario.tags) ? scenario.tags.join(', ') : (scenario.tags || root.tags || body.tags || card.source || ''),\n    prioridade: scenario.priority || root.prioridade || body.priority || card.priority || '',\n    user: userValue,\n    application_id: appId,\n    interaction_token: interactionToken,\n    interaction_id: interactionId,\n    responseTarget: appId && interactionToken ? 'discord' : 'api',\n  }\n}];"
+      },
+      "id": "a8cab905-d524-43a5-8b2e-a53f6c7bf41f",
+      "name": "Normalizar Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        23200,
+        20272
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const root = $json || {};\nconst body = root.body || root;\nconst settings = body.settings || body.configSnapshot || body;\n\nconst isValidUrl = (value) => {\n  if (typeof value !== 'string') return false;\n  try {\n    new URL(value.trim());\n    return true;\n  } catch {\n    return false;\n  }\n};\n\nconst issues = [];\nconst requiredFields = [\n  ['appPublicUrl', 'URL pública do app'],\n  ['webhookUrl', 'Webhook URL do n8n'],\n  ['apiKey', 'API Key do n8n'],\n  ['googleSheetsId', 'Google Sheets ID'],\n  ['googleSheetsFunctionalTab', 'Aba Testes Funcionais'],\n  ['googleSheetsPerformanceTab', 'Aba Testes Performance'],\n  ['githubOwner', 'GitHub Owner'],\n  ['githubRepo', 'GitHub Repo'],\n  ['githubBranch', 'GitHub Branch'],\n  ['githubToken', 'GitHub Token'],\n];\n\nfor (const [key, label] of requiredFields) {\n  const value = String(settings?.[key] || '').trim();\n  if (!value) {\n    issues.push(`${label} está vazio`);\n    continue;\n  }\n\n  if ((key === 'appPublicUrl' || key === 'webhookUrl') && !isValidUrl(value)) {\n    issues.push(`${label} está com URL inválida`);\n    continue;\n  }\n\n  if (key === 'webhookUrl' && !/\\/webhook(?:-test)?(\\/|$)/i.test(value)) {\n    issues.push(`${label} está com URL inválida`);\n    continue;\n  }\n\n  if (key === 'googleSheetsId' && !/^[a-zA-Z0-9_-]{25,}$/.test(value)) {\n    issues.push(`${label} está com formato inválido`);\n    continue;\n  }\n\n  if (key === 'githubToken' && !/^(ghp_|github_pat_)/i.test(value)) {\n    issues.push(`${label} está com formato inválido`);\n    continue;\n  }\n}\n\nif (String(settings?.discordWebhook || '').trim() && !/^https:\\/\\/(canary\\.|ptb\\.)?discord\\.com\\/api\\/webhooks\\/[^/]+\\/[^/]+$/i.test(String(settings.discordWebhook).trim())) {\n  issues.push('Discord Webhook está com formato inválido');\n}\n\nif (issues.length > 0) {\n  return [{ json: { ok: false, error: 'Configurações inválidas.', issues } }];\n}\n\nreturn [{ json: { ok: true, message: 'n8n healthcheck ok' } }];"
+      },
+      "id": "healthcheck-response",
+      "name": "Healthcheck Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        23100,
+        20448
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ String($json.action || '').trim().toLowerCase() }}",
+                    "rightValue": "buscar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ String($json.action || '').trim().toLowerCase() }}",
+                    "rightValue": "ver",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ String($json.action || '').trim().toLowerCase() }}",
+                    "rightValue": "adicionar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ String($json.action || '').trim().toLowerCase() }}",
+                    "rightValue": "editar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ String($json.action || '').trim().toLowerCase() }}",
+                    "rightValue": "status",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ String($json.action || '').trim().toLowerCase() }}",
+                    "rightValue": "deletar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ String($json.action || '').trim().toLowerCase() }}",
+                    "rightValue": "ia",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ String($json.action || '').trim().toLowerCase() }}",
+                    "rightValue": "pingqa",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ String($json.action || '').trim().toLowerCase() }}",
+                    "rightValue": "unknown",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "37b0070d-39ad-4ec4-b471-37a17563932f",
+      "name": "Roteador Acao",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        23632,
+        20176
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.config?.googleSheetsId || $json.config?.GOOGLE_SHEETS_ID || $json.GOOGLE_SHEETS_ID || \"1fHuX726h579bXDUq5du8lxQxerH2pztu2eA7HoP-nyo\" }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{$json.sheet}}"
+        },
+        "options": {}
+      },
+      "id": "186111a9-10c8-4ba1-a716-32b69ad4f4d8",
+      "name": "GS Ler Linhas",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        24080,
+        19792
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "36mCFMfO8zf5LClo",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cmd = $items(\"Normalizar Payload\", 0, 0)[0].json;\nconst rows = $input.all().map(i => i.json);\nlet encontrados = [];\nif (cmd.action === \"buscar\") {\n  const termo = (cmd.text || \"\").toLowerCase();\n  encontrados = rows.filter(r => {\n    const texto = [\n      r.ID, r.Categoria, r[\"MÃ³dulo\"], r[\"TÃ­tulo\"], r.Objetivo,\n      r[\"PrÃ©-condiÃ§Ã£o / CenÃ¡rio\"], r.Passos, r[\"Resultado Esperado\"],\n      r.Status, r.Tags\n    ].join(\" | \").toLowerCase();\n    return texto.includes(termo);\n  }).slice(0, 10);\n} else if (cmd.action === \"ia\") {\n  const terms = (cmd.text || \"\").toLowerCase().split(/\\s+/).filter(Boolean);\n  encontrados = rows.map(r => {\n    const texto = [\n      r.ID, r.Categoria, r[\"MÃ³dulo\"], r[\"TÃ­tulo\"], r.Objetivo,\n      r[\"PrÃ©-condiÃ§Ã£o / CenÃ¡rio\"], r.Passos, r[\"Resultado Esperado\"],\n      r.Status, r.Tags\n    ].join(\" | \").toLowerCase();\n    const score = terms.reduce((acc, t) => acc + (texto.includes(t) ? 1 : 0), 0);\n    return { r, score };\n  }).filter(x => x.score > 0).sort((a,b) => b.score - a.score).slice(0, 10).map(x => x.r);\n} else {\n  encontrados = rows;\n}\n\nif (encontrados.length === 0) {\n  return [{ json: { content: \"Nenhum cenÃ¡rio encontrado.\", application_id: cmd.application_id || \"\", interaction_token: cmd.interaction_token || cmd.token || \"\" } }];\n}\n\nconst content =\n  \"Encontrei \" + encontrados.length + \" cenÃ¡rio(s):\\n\\n\" +\n  encontrados.map(r => `â€¢ ${r.ID || \"[Sem ID]\"} | ${r.Status || \"Nao Executado\"} | ${r[\"TÃ­tulo\"] || \"[Sem tÃ­tulo]\"}`).join(\"\\n\");\n\nreturn [{ json: { content, application_id: cmd.application_id || \"\", interaction_token: cmd.interaction_token || cmd.token || \"\" } }];"
+      },
+      "id": "5ef6021b-74ee-4a5f-a5fb-e5968c98df90",
+      "name": "Filtrar e Formatar Busca",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        24528,
+        19808
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cmd = $items(\"Normalizar Payload\", 0, 0)[0].json;\nconst rows = $input.all().map(i => i.json);\nconst item = rows.find(r => (r.ID || \"\").toLowerCase() === (cmd.id || \"\").toLowerCase());\n\nif (!item) {\n  return [{ json: { content: `CenÃ¡rio ${cmd.id} nÃ£o encontrado.`, application_id: cmd.application_id || \"\", interaction_token: cmd.interaction_token || cmd.token || \"\" } }];\n}\n\nreturn [{\n  json: {\n    content:\n      `**${item.ID} - ${item[\"TÃ­tulo\"] || \"\"}**\\n` +\n      `Status: ${item.Status || \"Nao Executado\"}\\n` +\n      `MÃ³dulo: ${item[\"MÃ³dulo\"] || \"\"}\\n` +\n      `Objetivo: ${item.Objetivo || \"\"}\\n` +\n      `Passos: ${item.Passos || \"\"}\\n` +\n      `Resultado esperado: ${item[\"Resultado Esperado\"] || \"\"}`,\n    application_id: cmd.application_id || \"\",\n    interaction_token: cmd.interaction_token || cmd.token || \"\"\n  }\n}];"
+      },
+      "id": "8022b420-bc0b-4e80-9a1a-190ff0200d3c",
+      "name": "Formatar CenÃ¡rio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        24528,
+        19968
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.config?.googleSheetsId || $json.config?.GOOGLE_SHEETS_ID || $json.GOOGLE_SHEETS_ID || \"1fHuX726h579bXDUq5du8lxQxerH2pztu2eA7HoP-nyo\" }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{$json.sheet}}"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID": "={{$json.id}}",
+            "Categoria": "={{$json.categoria || 'Funcional'}}",
+            "MÃ³dulo": "={{$json.modulo || ''}}",
+            "TÃ­tulo": "={{$json.titulo || ''}}",
+            "Objetivo": "={{$json.objetivo || ''}}",
+            "PrÃ©-condiÃ§Ã£o / CenÃ¡rio": "=",
+            "Passos": "={{$json.passos || ''}}",
+            "Resultado Esperado": "={{$json.resultado || ''}}",
+            "MÃ©tricas / SLA": "-",
+            "Prioridade": "={{$json.prioridade || 'MÃ©dia'}}",
+            "Status": "Nao Executado",
+            "Tags": "={{$json.tags || ''}}",
+            "Atualizado Em": "={{$now}}",
+            "Atualizado Por": "={{$json.user || 'discord'}}",
+            "Ultima Acao": "adicionar"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "430a8721-a502-4a20-8fd3-2c74eb9e7d4f",
+      "name": "GS Adicionar Cenario",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        24304,
+        20224
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "36mCFMfO8zf5LClo",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let cmd = null;\n\ntry { cmd = $(\"Normalizar Payload1\").first().json; } catch {}\nif (!cmd) { try { cmd = $(\"Normalizar Payload\").first().json; } catch {} }\n\nconst featurePath = $json.featurePath || \"\";\nconst commitUrl = $json.commitUrl || \"\";\n\nreturn [{\n  json: {\n    content: `CenÃ¡rio ${cmd?.id || \"sem ID\"} adicionado com sucesso e sincronizado no GitHub.\\nArquivo: ${featurePath}${commitUrl ? `\\nCommit: ${commitUrl}` : \"\"}`,\n    ok: true,\n    id: cmd?.id || \"\",\n    featurePath,\n    commitUrl,\n    responseTarget: cmd?.responseTarget || \"api\",\n    application_id: cmd?.application_id || \"\",\n    interaction_token: cmd?.interaction_token || \"\"\n  }\n}];"
+      },
+      "id": "ec0c4daa-513a-4734-bab1-f927ddc72921",
+      "name": "Confirmar AdiÃ§Ã£o",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        24528,
+        20256
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.config?.googleSheetsId || $json.config?.GOOGLE_SHEETS_ID || $json.GOOGLE_SHEETS_ID || \"1fHuX726h579bXDUq5du8lxQxerH2pztu2eA7HoP-nyo\" }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{$json.sheet}}"
+        },
+        "options": {}
+      },
+      "id": "a46ce9f4-0e7b-4fc0-bd84-e46bb1ede9eb",
+      "name": "GS Ler para Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        23856,
+        20416
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "36mCFMfO8zf5LClo",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let cmd = null;\ntry { cmd = $(\"Normalizar Payload1\").first().json; } catch {}\nif (!cmd) { try { cmd = $(\"Normalizar Payload\").first().json; } catch {} }\n\nconst rows = $input.all().map(i => i.json);\nconst item = rows.find(r => (r.ID || \"\").toLowerCase() === (cmd.id || \"\").toLowerCase());\n\nif (!item) {\n  return [{ json: { content: `CenÃ¡rio ${cmd.id} nÃ£o encontrado.`, responseTarget: cmd.responseTarget, application_id: cmd.application_id || \"\", interaction_token: cmd.interaction_token || \"\" } }];\n}\n\nreturn [{\n  json: {\n    ...item,\n    ID: item.ID,\n    Status: cmd.status,\n    \"Atualizado Em\": new Date().toISOString(),\n    \"Atualizado Por\": cmd.user || \"discord\",\n    \"Ultima Acao\": \"status\",\n    sheet: cmd.sheet || \"Testes Funcionais\",\n    responseTarget: cmd.responseTarget || \"api\",\n    application_id: cmd.application_id || \"\",\n    interaction_token: cmd.interaction_token || \"\",\n    _ok: true\n  }\n}];"
+      },
+      "id": "ffd94520-f3aa-4329-a489-678eef890ca9",
+      "name": "Preparar Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        24080,
+        20416
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.config?.googleSheetsId || $json.config?.GOOGLE_SHEETS_ID || $json.GOOGLE_SHEETS_ID || \"1fHuX726h579bXDUq5du8lxQxerH2pztu2eA7HoP-nyo\" }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $json.sheet }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "ID"
+          ],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "155bb197-60b6-4a63-907d-2512d55512df",
+      "name": "GS Atualizar Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        24304,
+        20416
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "36mCFMfO8zf5LClo",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let cmd = null;\ntry { cmd = $(\"Normalizar Payload1\").first().json; } catch {}\nif (!cmd) { try { cmd = $(\"Normalizar Payload\").first().json; } catch {} }\n\nreturn [{\n  json: {\n    content: `Status do cenÃ¡rio ${cmd?.id || \"\"} alterado para ${cmd?.status || \"\"}.`,\n    ok: true,\n    id: cmd?.id || \"\",\n    responseTarget: cmd?.responseTarget || \"api\",\n    application_id: cmd?.application_id || \"\",\n    interaction_token: cmd?.interaction_token || \"\"\n  }\n}];"
+      },
+      "id": "784a371c-697b-46dd-9e8a-fce2e94fc2f6",
+      "name": "Confirmar Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        24528,
+        20416
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.config?.googleSheetsId || $json.config?.GOOGLE_SHEETS_ID || $json.GOOGLE_SHEETS_ID || \"1fHuX726h579bXDUq5du8lxQxerH2pztu2eA7HoP-nyo\" }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{$json.sheet}}"
+        },
+        "options": {}
+      },
+      "id": "d7603ed2-ad05-4762-8bad-0a225f86e949",
+      "name": "GS Ler para Editar",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        23856,
+        20608
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "36mCFMfO8zf5LClo",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cmd = $items(\"Normalizar Payload\", 0, 0)[0].json;\nconst rows = $input.all().map(i => i.json);\nconst item = rows.find(r => (r.ID || \"\").toLowerCase() === (cmd.id || \"\").toLowerCase());\nif (!item) {\n  return [{ json: { content: `CenÃ¡rio ${cmd.id} nÃ£o encontrado.` } }];\n}\nif (!cmd.field) {\n  return [{ json: { content: \"Informe o campo a editar.\" } }];\n}\nitem[cmd.field] = cmd.value || \"\";\nitem[\"Atualizado Em\"] = new Date().toISOString();\nitem[\"Atualizado Por\"] = cmd.user || \"discord\";\nitem[\"Ultima Acao\"] = \"editar\";\nreturn [{ json: item }];"
+      },
+      "id": "11355285-2cbc-44e3-8f3c-6dc8aa38cf14",
+      "name": "Preparar EdiÃ§Ã£o",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        24080,
+        20608
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.config?.googleSheetsId || $json.config?.GOOGLE_SHEETS_ID || $json.GOOGLE_SHEETS_ID || \"1fHuX726h579bXDUq5du8lxQxerH2pztu2eA7HoP-nyo\" }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{$json.sheet}}"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "ID"
+          ],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "b4e8e6a0-aadd-4b2f-ab4d-8ee49133f5a1",
+      "name": "GS Atualizar EdiÃ§Ã£o",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        24304,
+        20608
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "36mCFMfO8zf5LClo",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let cmd = null;\ntry { cmd = $(\"Normalizar Payload1\").first().json; } catch {}\nif (!cmd) { try { cmd = $(\"Normalizar Payload\").first().json; } catch {} }\n\nreturn [{\n  json: {\n    content: `Campo ${cmd?.field || \"\"} do cenÃ¡rio ${cmd?.id || \"\"} atualizado.`,\n    ok: true,\n    responseTarget: cmd?.responseTarget || \"api\",\n    application_id: cmd?.application_id || \"\",\n    interaction_token: cmd?.interaction_token || \"\"\n  }\n}];"
+      },
+      "id": "cab4e68d-5eb1-4774-b8d7-c210d94785ce",
+      "name": "Confirmar EdiÃ§Ã£o",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        24528,
+        20608
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.config?.googleSheetsId || $json.config?.GOOGLE_SHEETS_ID || $json.GOOGLE_SHEETS_ID || \"1fHuX726h579bXDUq5du8lxQxerH2pztu2eA7HoP-nyo\" }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $json.sheet }}",
+          "mode": "name"
+        },
+        "startIndex": "={{ $json.rowNumber }}"
+      },
+      "id": "969dbb63-900d-496b-995e-1415db29e1ff",
+      "name": "GS Deletar CenÃ¡rio",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        24304,
+        20800
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "36mCFMfO8zf5LClo",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let cmd = null;\ntry { cmd = $(\"Normalizar Payload1\").first().json; } catch {}\nif (!cmd) { try { cmd = $(\"Normalizar Payload\").first().json; } catch {} }\n\nif ($json.notFound) {\n  return [{ json: { content: $json.content, responseTarget: cmd?.responseTarget || \"api\", application_id: cmd?.application_id || \"\", interaction_token: cmd?.interaction_token || \"\" } }];\n}\n\nreturn [{\n  json: {\n    content: `CenÃ¡rio ${$json.ID} deletado com sucesso.`,\n    ok: true,\n    responseTarget: cmd?.responseTarget || \"api\",\n    application_id: cmd?.application_id || \"\",\n    interaction_token: cmd?.interaction_token || \"\"\n  }\n}];"
+      },
+      "id": "24cd0ae0-ecd3-4b09-b16e-c32ccd4c74be",
+      "name": "Confirmar DeleÃ§Ã£o",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        24528,
+        20800
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$items(\"Normalizar Payload\", 0, 0)[0].json.action.toString()}}",
+                    "rightValue": "buscar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "59537ea4-3232-4e99-af44-c5175e34dd7a"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$items(\"Normalizar Payload\", 0, 0)[0].json.action.toString()}}",
+                    "rightValue": "ver",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "8d4c8466-a335-49b2-b73d-beec042d24db"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$items(\"Normalizar Payload\", 0, 0)[0].json.action.toString()}}",
+                    "rightValue": "ia",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "89df5a39-01f1-49eb-aa4f-f51b8e6ecb1f"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fbe26f67-69ef-4875-8773-f3b3105049ff",
+      "name": "Roteador PÃ³s-Leitura",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        24304,
+        19776
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cmd = $items(\"Normalizar Payload\", 0, 0)[0].json;\nconst rows = $input.all().map(i => i.json);\nconst pergunta = (cmd.text || \"\").trim();\n\nconst availableSheets = [\"Testes Funcionais\", \"Testes Performance\"];\nconst lower = pergunta.toLowerCase();\n\n// tenta entender em quais abas o usuÃ¡rio quer perguntar\nlet selectedSheets = [];\nif (/funcional|funcionais/.test(lower)) selectedSheets.push(\"Testes Funcionais\");\nif (/performance|performace/.test(lower)) selectedSheets.push(\"Testes Performance\");\nif (selectedSheets.length === 0) selectedSheets = [...availableSheets];\n\nconst rowsInScope = rows.filter(r => selectedSheets.includes(r._sheet));\n\nconst asksForSheets = /(quais|listar|lista).*(abas|sheets)|quais\\s+abas|quais\\s+sheets/.test(lower);\n\nif (asksForSheets) {\n  const counts = availableSheets.map(sheet => {\n    const total = rows.filter(r => r._sheet === sheet).length;\n    return `- ${sheet}: ${total} cenÃ¡rio(s)`;\n  }).join(\"\\n\");\n\n  return [{\n    json: {\n      ...cmd,\n      content:\n        \"As abas disponÃ­veis sÃ£o:\\n\" +\n        \"- Testes Funcionais\\n\" +\n        \"- Testes Performance\\n\\n\" +\n        \"Contagem atual por aba:\\n\" + counts + \"\\n\\n\" +\n        \"VocÃª pode perguntar, por exemplo:\\n\" +\n        \"- 'Na aba Testes Funcionais, quantos cenÃ¡rios eu tenho?'\\n\" +\n        \"- 'Na aba Testes Performance, quais cenÃ¡rios existem?'\\n\" +\n        \"- 'Considerando todas as abas, quantos cenÃ¡rios eu tenho no total?'\"\n    }\n  }];\n}\n\nconst tokens = lower.split(/\\s+/).filter(Boolean);\nconst scored = rowsInScope.map(r => {\n  const text = [\n    r._sheet, r.ID, r.Categoria, r[\"MÃ³dulo\"], r[\"TÃ­tulo\"], r.Objetivo,\n    r[\"PrÃ©-condiÃ§Ã£o / CenÃ¡rio\"], r.Passos, r[\"Resultado Esperado\"],\n    r.Status, r.Tags\n  ].join(\" | \").toLowerCase();\n  const score = tokens.reduce((acc, t) => acc + (text.includes(t) ? 1 : 0), 0);\n  return { r, score };\n}).sort((a, b) => b.score - a.score);\n\nconst selected = scored.filter(x => x.score > 0).slice(0, 90).map(x => x.r);\nconst fallback = selected.length > 0 ? selected : rowsInScope.slice(0, 90);\n\nconst contexto = fallback.map((r, idx) => (\n`[CENÃRIO ${idx + 1}]\\n` +\n`ABA: ${r._sheet || \"\"}\\n` +\n`ID: ${r.ID || \"\"}\\n` +\n`Categoria: ${r.Categoria || \"\"}\\n` +\n`MÃ³dulo: ${r[\"MÃ³dulo\"] || \"\"}\\n` +\n`TÃ­tulo: ${r[\"TÃ­tulo\"] || \"\"}\\n` +\n`Objetivo: ${r.Objetivo || \"\"}\\n` +\n`PrÃ©-condiÃ§Ã£o / CenÃ¡rio: ${r[\"PrÃ©-condiÃ§Ã£o / CenÃ¡rio\"] || \"\"}\\n` +\n`Passos: ${r.Passos || \"\"}\\n` +\n`Resultado Esperado: ${r[\"Resultado Esperado\"] || \"\"}\\n` +\n`Status: ${r.Status || \"\"}\\n` +\n`Tags: ${r.Tags || \"\"}`\n)).join(\"\\n--------------------\\n\");\n\nconst countsBySheet = availableSheets.map(sheet => {\n  const total = rows.filter(r => r._sheet === sheet).length;\n  return `${sheet}: ${total}`;\n}).join(\" | \");\n\nconst userPrompt =\n`Abas disponÃ­veis: ${availableSheets.join(\", \")}\nAbas selecionadas para esta pergunta: ${selectedSheets.join(\", \")}\nContagem atual por aba: ${countsBySheet}\n\nPergunta do usuÃ¡rio: ${pergunta}\n\nResponda usando apenas os cenÃ¡rios do contexto abaixo.\nSe o usuÃ¡rio pedir total geral e nenhuma aba especÃ­fica foi mencionada, considere todas as abas.\nSempre informe, quando relevante, em qual aba estÃ¡ cada cenÃ¡rio.\n\nContexto de cenÃ¡rios:\n\n${contexto}`;\n\nreturn [{ json: { ...cmd, userPrompt, contextCount: fallback.length, selectedSheets, availableSheets } }];"
+      },
+      "id": "a679f7b8-c1c4-47b3-82df-54123916c374",
+      "name": "Preparar Contexto IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        24528,
+        19504
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fullText = String($json.output || $json.content || \"Sem resposta.\");\nconst chunkSize = 1500;\n\nconst meta = $('Normalizar Payload').first().json;\nconst chunks = [];\n\nfor (let i = 0; i < fullText.length; i += chunkSize) {\n  chunks.push(fullText.slice(i, i + chunkSize));\n}\n\nreturn chunks.map((part, index) => ({\n  json: {\n    content: chunks.length > 1\n      ? `Parte ${index + 1}/${chunks.length}\\n\\n${part}`\n      : part,\n    application_id: meta.application_id || \"\",\n    interaction_token: meta.interaction_token || meta.token || \"\",\n    interaction_id: meta.interaction_id || \"\"\n  }\n}));"
+      },
+      "id": "533ac610-7585-469f-8860-c26e0a714336",
+      "name": "Formatar Resposta IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        25104,
+        19504
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.userPrompt }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        24752,
+        19504
+      ],
+      "id": "b411b6b6-a997-4eb3-8e88-8413f5727fcd",
+      "name": "AI Agent",
+      "notes": "VocÃª Ã© um assistente de QA. Responda apenas com base nos cenÃ¡rios fornecidos no contexto. Se nÃ£o houver evidÃªncia suficiente no contexto, diga claramente que nÃ£o encontrou cenÃ¡rio suficiente. Sempre que possÃ­vel, cite os IDs dos cenÃ¡rios usados na resposta. Seja objetivo e Ãºtil."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://discord.com/api/v10/webhooks/\" + $('Webhook Discord').first().json.body.application_id + \"/\" + ( $('Webhook Discord').first().json.body.interaction_token || ($('Webhook Discord').first().json.body.body && $('Webhook Discord').first().json.body.body.token) || \"\" ) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "ngrok-skip-browser-warning",
+              "value": "1"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"content\": String($json.content || \"Sem resposta.\").slice(0, 1500) } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        25328,
+        19504
+      ],
+      "id": "cba07332-bcdb-4f38-9ac0-d38f4d415531",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.config?.googleSheetsId || $json.config?.GOOGLE_SHEETS_ID || $json.GOOGLE_SHEETS_ID || \"1fHuX726h579bXDUq5du8lxQxerH2pztu2eA7HoP-nyo\" }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Testes Funcionais"
+        },
+        "options": {}
+      },
+      "id": "8743ae85-c37f-4401-a8ce-ae442de1ccf5",
+      "name": "GS Ler Funcionais IA",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        23856,
+        19360
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "36mCFMfO8zf5LClo",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.config?.googleSheetsId || $json.config?.GOOGLE_SHEETS_ID || $json.GOOGLE_SHEETS_ID || \"1fHuX726h579bXDUq5du8lxQxerH2pztu2eA7HoP-nyo\" }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Testes Performance"
+        },
+        "options": {}
+      },
+      "id": "c7fd9c7f-6216-4462-b3a6-5a62bf3bf158",
+      "name": "GS Ler Performance IA",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        23856,
+        19552
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "36mCFMfO8zf5LClo",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => ({ json: { ...item.json, _sheet: 'Testes Funcionais' } }));"
+      },
+      "id": "48faeb3f-d844-487f-8265-a816aee4c301",
+      "name": "Tag Funcionais IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        24080,
+        19360
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => ({ json: { ...item.json, _sheet: 'Testes Performance' } }));"
+      },
+      "id": "58f5b79d-f332-46bc-98ac-0506cf62566b",
+      "name": "Tag Performance IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        24080,
+        19552
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "c1e920dd-72c1-4eed-a4ab-d08695434c6d",
+      "name": "Merge IA Sheets",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        24304,
+        19440
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { content: 'pong do n8n' } }];"
+      },
+      "id": "3f4e4daa-27d4-46f8-bc64-58777b1099d3",
+      "name": "HTTP Request Discord Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        24528,
+        20992
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://discord.com/api/v10/webhooks/\" + $json.application_id + \"/\" + $json.interaction_token }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"content\": String($json.content || \"Sem resposta.\").slice(0, 1500) } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        25024,
+        20432
+      ],
+      "id": "29e86850-77ed-4f20-9d78-50a91aee337c",
+      "name": "HTTP Request Discord Status1"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.config?.googleSheetsId || $json.config?.GOOGLE_SHEETS_ID || $json.GOOGLE_SHEETS_ID || \"1fHuX726h579bXDUq5du8lxQxerH2pztu2eA7HoP-nyo\" }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Normalizar Payload').item.json.sheet }}"
+        },
+        "options": {}
+      },
+      "id": "c14f4d30-be39-4341-b7d8-5d9a00260a75",
+      "name": "GS Ler para Deletar",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        23856,
+        20800
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "36mCFMfO8zf5LClo",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cmd = $items(\"Normalizar Payload\", 0, 0)[0].json;\nconst rows = $input.all().map(i => i.json);\n\n// procura o Ã­ndice real do cenÃ¡rio na aba lida\nconst idx = rows.findIndex(r => (r.ID || \"\").toLowerCase() === (cmd.id || \"\").toLowerCase());\n\nif (idx === -1) {\n  return [{\n    json: {\n      notFound: true,\n      ID: cmd.id,\n      sheet: cmd.sheet,\n      content: `CenÃ¡rio ${cmd.id} nÃ£o encontrado.`\n    }\n  }];\n}\n\n// +2 = cabeÃ§alho + Ã­ndice zero-based\nconst rowNumber = idx + 2;\n\nreturn [{\n  json: {\n    ID: cmd.id,\n    sheet: cmd.sheet,\n    rowNumber,\n    content: `CenÃ¡rio ${cmd.id} localizado na linha ${rowNumber}.`\n  }\n}];"
+      },
+      "id": "ac6e1345-8a3a-47ab-943c-ea6d2a821967",
+      "name": "Encontrar CenÃ¡rio para Deletar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        24080,
+        20800
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $json;\n\nconst scenarioId = item.ID || item.id || \"SEM-ID\";\nconst moduleName = item[\"Módulo\"] || item.modulo || \"Geral\";\nconst title = item[\"Título\"] || item.titulo || scenarioId;\nconst objective = item.Objetivo || item.objetivo || \"\";\nconst pre = item[\"Pré-condição / Cenário\"] || item.precondicao || \"\";\nconst steps = item.Passos || item.passos || \"\";\nconst expected = item[\"Resultado Esperado\"] || item.resultado || \"\";\nconst category = (item.Categoria || item.categoria || \"Funcional\").toString();\nconst sheet = (item.sheet || \"Testes Funcionais\").toString().trim();\n\nconst prompt =\n`You are a senior QA automation engineer.\nRewrite the scenario below into high-quality Gherkin BDD for automation.\n\nRules:\n- write in English\n- output only the .feature content\n- do not copy the manual test literally\n- normalize the wording for reusable automation steps\n- keep the business intent from the original scenario\n- use clear Feature and Scenario names\n- use tags with the scenario ID and category\n- prefer concise, automation-friendly Given/When/Then steps\n- do not invent requirements that are not present\n\nScenario data:\nID: ${scenarioId}\nModule: ${moduleName}\nCategory: ${category}\nSheet: ${sheet}\nTitle: ${title}\nObjective: ${objective}\nPreconditions: ${pre}\nManual Steps: ${steps}\nExpected Result: ${expected}`;\n\nreturn [{\n  json: {\n    ...item,\n    owner: item.config?.githubOwner || $vars.GITHUB_OWNER || \"PauloCabralGit\",\n    repo: item.config?.githubRepo || $vars.GITHUB_REPO || \"Playwright-N8N-IA\",\n    branch: item.config?.githubBranch || $vars.GITHUB_BRANCH || \"main\",\n    scenarioId,\n    moduleName,\n    category,\n    bddPrompt: prompt\n  }\n}];"
+      },
+      "id": "b532b3db-9d49-4fc4-a437-e00241bfad78",
+      "name": "Montar Gherkin BDD",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        24528,
+        20112
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ \"https://api.github.com/repos/\" + $json.owner + \"/\" + $json.repo + \"/contents/\" + ($json.featurePath || (($json.sheet && /performance/i.test(String($json.sheet))) ? \"features/performance\" : \"features/funcionais\") + \"/\" + String($json.scenarioId || $json.id || \"sem-id\").toLowerCase() + \".feature\") }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + ($json.githubToken || $json.config?.githubToken || $vars.GITHUB_TOKEN || '') }}"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.githubRequestBody }}",
+        "options": {}
+      },
+      "id": "f9465296-ae91-4c87-bce3-34f3c3e89c05",
+      "name": "GitHub Salvar Feature",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        25696,
+        20112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json || {};\nconst commitUrl = body.commit?.html_url || body.content?.html_url || '';\nconst featurePath = body.content?.path || $('Montar Gherkin BDD').first().json.featurePath;\nreturn [{ json: { featurePath, commitUrl } }];"
+      },
+      "id": "8ae07cda-4b8f-4205-9c36-4cbaee3a39da",
+      "name": "Formatar Resposta GitHub Feature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        25936,
+        20112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = String($json.gherkin || \"\");\nconst encoded = Buffer.from(text, \"utf8\").toString(\"base64\");\n\nconst featurePath =\n  $json.featurePath ||\n  ((($json.sheet && /performance/i.test(String($json.sheet))) ? \"features/performance\" : \"features/funcionais\") + \"/\" + String($json.scenarioId || $json.id || \"sem-id\").toLowerCase() + \".feature\");\n\nreturn [{\n  json: {\n    ...$json,\n    featurePath,\n    githubMessage: $json.commitMessage,\n    githubContentBase64: encoded,\n    githubBranch: $json.branch\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        24912,
+        20112
+      ],
+      "id": "c5b4a047-99ec-428a-ac99-13f061ddb3dd",
+      "name": "Preparar Payload GitHub"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "qa-platform/google-sheets-sync",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "297760f4-2445-4809-8ea1-818db7d13b43",
+      "name": "Webhook Discord1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        22976,
+        20480
+      ],
+      "webhookId": "783725c9-2169-4f37-8fdc-e9ca887cdb72"
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $json || {};\n\nconst pickWebhook = () => {\n  const candidates = [\n    'Webhook Discord1',\n    'Webhook Next Status',\n    'Webhook Next Created',\n    'Webhook Discord',\n  ];\n\n  for (const name of candidates) {\n    try {\n      const value = $(name).first().json;\n      if (value && Object.keys(value).length > 0) return value;\n    } catch (e) {}\n  }\n\n  return {};\n};\n\nconst root = pickWebhook();\nconst body = root.body || {};\nconst options = body.options || {};\nconst scenario = root.scenario || body.scenario || {};\nconst card = root.card || body.card || {};\nconst acceptanceCriteria = Array.isArray(body.acceptanceCriteria)\n  ? body.acceptanceCriteria\n  : Array.isArray(card.acceptanceCriteria)\n    ? card.acceptanceCriteria\n    : [];\nconst scenarios = Array.isArray(body.scenarios)\n  ? body.scenarios\n  : Array.isArray(card.scenarios)\n    ? card.scenarios\n    : [];\nconst actionFromApi = root.action || body.action || body.command || root.command || '';\n\nconst inferredAction =\n  actionFromApi ||\n  (Array.isArray(body.scenarios) && body.scenarios.length ? 'create' : '') ||\n  (body.scenario ? 'create' : '') ||\n  (root.source === 'IA' && (body.id || root.id || scenario.id || card.title) ? 'create' : '') ||\n  'unknown';\n\nconst command = body.command || root.command || inferredAction || 'unknown';\n\nconst map = {\n  qa_buscar: 'buscar',\n  qa_ver: 'ver',\n  qa_add: 'adicionar',\n  qa_editar: 'editar',\n  qa_status: 'status',\n  qa_del: 'deletar',\n  qa_ia: 'ia',\n  pingqa: 'pingqa',\n  create: 'adicionar',\n  move: 'status',\n  update: 'status',\n  create_scenario: 'adicionar',\n  scenario_created: 'adicionar',\n  update_status: 'status',\n};\n\nconst appId = root.application_id || body.application_id || body.body?.application_id || '';\nconst interactionToken = root.interaction_token || body.interaction_token || body.token || body.body?.token || '';\nconst interactionId = root.interaction_id || body.interaction_id || body.id || body.body?.id || '';\nconst userValue = scenario.owner || body.user || root.user || 'api';\n\nconst inferredSheet =\n  options.aba ||\n  root.sheet ||\n  body.sheet ||\n  ((options.id || scenario.id || card.title || '').toUpperCase().startsWith('CT-PERF')\n    ? (config.googleSheetsPerformanceTab || 'Testes Performance')\n    : (config.googleSheetsFunctionalTab || 'Testes Funcionais'));\n\nreturn [{\n  json: {\n    ...root,\n    card,\n    acceptanceCriteria,\n    scenarios,\n    config,\n    action: map[command] || 'unknown',\n    text: options.texto || options.pergunta || root.text || card.businessGoal || '',\n    id: options.id || scenario.id || root.id || body.id || card.id || '',\n    status: options.status || root.status || body.status || scenario.status || card.status || '',\n    field: options.campo || root.field || '',\n    value: options.valor || root.value || '',\n    sheet: inferredSheet,\n    categoria: scenario.category || root.categoria || body.category || card.source || '',\n    modulo: scenario.module || root.modulo || body.module || card.module || '',\n    titulo: scenario.title || root.titulo || body.title || card.title || '',\n    objetivo: scenario.objective || root.objetivo || body.businessGoal || card.businessGoal || '',\n    precondicao: scenario.preconditions || root.precondicao || body.precondicao || card.qaNotes || '',\n    passos: scenario.steps || root.passos || body.passos || '',\n    resultado: scenario.expectedResult || root.resultado || body.resultado || acceptanceCriteria.join('\\n') || '',\n    tags: Array.isArray(scenario.tags) ? scenario.tags.join(', ') : (scenario.tags || root.tags || body.tags || card.source || ''),\n    prioridade: scenario.priority || root.prioridade || body.priority || card.priority || '',\n    user: userValue,\n    application_id: appId,\n    interaction_token: interactionToken,\n    interaction_id: interactionId,\n    responseTarget: appId && interactionToken ? 'discord' : 'api',\n  }\n}];"
+      },
+      "id": "80a32a86-7600-4318-ba40-d82aecffeced",
+      "name": "Normalizar Payload1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        23200,
+        20480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $json || {};\nconst original = $('Preparar Payload GitHub').first().json;\n\nconst body = {\n  message: original.githubMessage || original.commitMessage,\n  content: original.githubContentBase64,\n  branch: original.githubBranch || original.branch,\n};\n\nif (prev.sha) {\n  body.sha = prev.sha;\n}\n\nreturn [\n  {\n    json: {\n      ...original,\n      githubRequestBody: body,\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        25408,
+        20112
+      ],
+      "id": "8bcd6690-66bc-4756-b4f6-8eabaf9ed5f9",
+      "name": "Montar Body GitHub"
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('Preparar Payload GitHub').first().json;\n\nconst body = {\n  message: original.githubMessage || original.commitMessage,\n  content: original.githubContentBase64,\n  branch: original.githubBranch || original.branch,\n};\n\nreturn [\n  {\n    json: {\n      ...original,\n      githubRequestBody: body,\n    }\n  }\n];"
+      },
+      "id": "1a7d89c3-7c8d-4f8e-93d9-1de75b2d5c27",
+      "name": "Montar Body GitHub Novo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        25408,
+        20272
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ \"https://api.github.com/repos/\" + $json.owner + \"/\" + $json.repo + \"/contents/\" + $json.featurePath }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + ($json.githubToken || $json.config?.githubToken || $vars.GITHUB_TOKEN || '') }}"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "neverError": true,
+            "responseFormat": "json",
+            "includeResponseHeadersAndStatus": true
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "continueOnFail": true,
+      "position": [
+        25152,
+        20112
+      ],
+      "id": "12c860e1-555c-41c8-8612-0526e7e42f0c",
+      "name": "GitHub Buscar Feature Atual"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.sha || '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b7dd6bb5-7fd2-4e83-9bfb-86c5dd8c6c1c",
+      "name": "GitHub Arquivo Existe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        25328,
+        20112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $json;\n\nconst scenarioId = item.ID || item.id || \"SEM-ID\";\nconst card = item.card || item.body?.card || {};\nconst acceptanceCriteria = Array.isArray(item.acceptanceCriteria)\n  ? item.acceptanceCriteria\n  : Array.isArray(card.acceptanceCriteria)\n    ? card.acceptanceCriteria\n    : [];\nconst scenarios = Array.isArray(item.scenarios)\n  ? item.scenarios\n  : Array.isArray(card.scenarios)\n    ? card.scenarios\n    : [];\nconst moduleName = item[\"M?dulo\"] || item.modulo || card.module || \"Geral\";\nconst title = item[\"T?tulo\"] || item.titulo || card.title || scenarioId;\nconst objective = item.Objetivo || item.objetivo || item.businessGoal || card.businessGoal || \"\";\nconst pre = item[\"Pr?-condi??o / Cen?rio\"] || item.precondicao || item.qaNotes || card.qaNotes || \"\";\nconst steps = item.Passos || item.passos || \"\";\nconst expected = item[\"Resultado Esperado\"] || item.resultado || acceptanceCriteria.join(\"\n\") || \"\";\nconst category = (item.Categoria || item.categoria || card.source || \"Funcional\").toString();\nconst sheet = (item.sheet || \"Testes Funcionais\").toString().trim();\n\nconst hasUsefulContext = [title, objective, pre, steps, expected, card.qaNotes, acceptanceCriteria.join(\" \"), scenarios.map(s => s.title || s.id).join(' ')].some(v => String(v || \"\").trim().length > 0);\nconst shouldUseAI = hasUsefulContext;\n\nconst acceptanceList = acceptanceCriteria.length > 0\n  ? acceptanceCriteria.map((a, i) => `${i + 1}. ${String(a)}`).join(\"\n\")\n  : \"\";\n\nconst scenarioSummary = scenarios.length > 0\n  ? scenarios.map(s => `- ${s.id || ''} ${s.title || ''} ${s.source ? `(${s.source})` : ''} ${s.status ? `[${s.status}]` : ''}`.trim()).join(\"\n\")\n  : \"\";\n\nconst fallbackGherkin = `Feature: ${title || scenarioId}\n\n  @${scenarioId} @${category}\n  Scenario: ${objective || title || scenarioId}\n    Given the scenario ${scenarioId} is available\n    When the user processes the functional requirements\n    Then the expected business outcome should be validated`;\n\nconst prompt =\n`You are a senior QA automation engineer.\nRewrite the scenario below into high-quality Gherkin BDD for automation.\n\nRules:\n- write in English\n- output only the .feature content\n- do not copy the manual test literally\n- normalize the wording for reusable automation steps\n- keep the business intent from the original scenario\n- use clear Feature and Scenario names\n- use tags with the scenario ID and category\n- prefer concise, automation-friendly Given/When/Then steps\n- do not invent requirements that are not present\n- if the title/objective are sparse, infer the behavior from businessGoal, qaNotes and acceptanceCriteria without inventing new rules\n\nScenario data:\nID: ${scenarioId}\nModule: ${moduleName}\nCategory: ${category}\nSheet: ${sheet}\nTitle: ${title}\nBusiness Goal: ${objective}\nQA Notes: ${pre}\nManual Steps: ${steps}\nExpected Result: ${expected}\nAcceptance Criteria:\n${acceptanceList || '- none provided'}\nRelated Scenarios:\n${scenarioSummary || '- none provided'}`;\n\nreturn [{\n  json: {\n    ...item,\n    card,\n    acceptanceCriteria,\n    scenarios,\n    scenarioId,\n    moduleName,\n    category,\n    sheet,\n    shouldUseAI,\n    fallbackGherkin,\n    bddPrompt: prompt\n  }\n}];"
+      },
+      "id": "1b851338-40bf-4c5d-9932-d893b30300ba",
+      "name": "Preparar Prompt BDD IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        24704,
+        20112
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.bddPrompt }}",
+        "options": {
+          "systemMessage": "VocÃª Ã© um especialista em automaÃ§Ã£o de testes. Gere Gherkin BDD em inglÃªs com Given/When/Then claros e reutilizÃ¡veis, pensando em Playwright/Cucumber. Responda apenas com o conteÃºdo do arquivo .feature."
+        }
+      },
+      "id": "c41ca2d2-2102-4fce-b427-2641ad827891",
+      "name": "AI Agent BDD",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        25472,
+        19696
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $(\"Preparar Prompt BDD IA\").first().json;\nconst aiText = String($json.output || $json.content || $json.error || \"\").trim();\n\nconst rateLimited = /too many requests|rate limit|provider returned error|429/i.test(aiText);\nconst fallbackText = original.fallbackGherkin || `Feature: ${original.titulo || original.scenarioId || original.id}\n\n  @${original.scenarioId || original.id} @${original.category || 'Funcional'}\n  Scenario: ${original.objetivo || original.titulo || original.scenarioId || original.id}\n    Given the scenario ${original.scenarioId || original.id} exists\n    When the user processes the scenario\n    Then the expected outcome should be recorded`;\n\nconst finalGherkin = !original.shouldUseAI || rateLimited || !aiText || /^I?m sorry/i.test(aiText)\n  ? fallbackText\n  : aiText;\n\nconst sheet = (original.sheet || \"Testes Funcionais\").toString().trim();\nconst folder = /performance/i.test(sheet) ? \"features/performance\" : \"features/funcionais\";\nconst featurePath = `${folder}/${String(original.scenarioId || original.id).toLowerCase()}.feature`;\n\nconst owner = original.config?.githubOwner || $vars.GITHUB_OWNER || \"PauloCabralGit\";\nconst repo = original.config?.githubRepo || $vars.GITHUB_REPO || \"Playwright-N8N-IA\";\nconst branch = original.config?.githubBranch || $vars.GITHUB_BRANCH || \"main\";\n\nreturn [{\n  json: {\n    ...original,\n    owner,\n    repo,\n    branch,\n    featurePath,\n    gherkin: finalGherkin,\n    commitMessage: `test(bdd): sync ${original.scenarioId || original.id} feature file`,\n    aiFallbackUsed: !original.shouldUseAI || rateLimited || !aiText || /^I?m sorry/i.test(aiText)\n  }\n}];"
+      },
+      "id": "46a5e09a-e581-4823-9e16-3d77f434e9d0",
+      "name": "Formatar BDD IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        25040,
+        19696
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ String($json.responseTarget || '') }}",
+                    "rightValue": "discord",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ String($json.responseTarget || '') }}",
+                    "rightValue": "api",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ccab4547-8d84-4bf1-b26a-7d5d83d3b4d1",
+      "name": "Roteador SaÃ­da",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        24784,
+        20512
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    ok: true,\n    content: $json.content || \"Processado com sucesso.\",\n    id: $json.id || \"\",\n    featurePath: $json.featurePath || \"\",\n    commitUrl: $json.commitUrl || \"\"\n  }\n}];"
+      },
+      "id": "3edca9a5-935e-4f3b-a0cc-591a34db8415",
+      "name": "Resposta API",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        25024,
+        20640
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "qa-platform/scenario-status-update",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "5c773660-5b01-41ad-8cd4-f9a41bdef10f",
+      "name": "Webhook Next Status",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        22976,
+        20688
+      ],
+      "webhookId": "916832f5-8c11-4293-a34d-be1223b1a278"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://mathilde-obcuneate-allusively.ngrok-free.dev/api/settings/n8n/config",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "load-config-secondary-node",
+      "name": "Load Config Secondary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        23100,
+        20688
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "qa-platform/scenario-created",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "4a9b3e14-71c1-4222-a3d1-9ecf5740b9ef",
+      "name": "Webhook Next Created",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        22976,
+        20896
+      ],
+      "webhookId": "5882b72c-580e-4ee8-a0be-a5827b64c871"
+    },
+    {
+      "parameters": {
+        "jsCode": "const root = $json || {};\nconst body = root.body || {};\nconst scenario = root.scenario || body.scenario || {};\n\nreturn [{\n  json: {\n    ...root,\n    ...body,\n    ...scenario,\n    action: \"adicionar\",\n    ok: true,\n    message: \"Webhook scenario-created recebido com sucesso.\",\n    responseTarget: root.responseTarget || body.responseTarget || \"api\"\n  }\n}];"
+      },
+      "id": "44a8b08d-6568-4b7b-8b8c-58fe6809e228",
+      "name": "Resposta API Scenario Created",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        23200,
+        20896
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "openai/gpt-oss-20b:free",
+          "mode": "list",
+          "cachedResultName": "openai/gpt-oss-20b:free"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        24736,
+        19744
+      ],
+      "id": "0800ce7f-c4a3-41ce-849d-1d47b0e4f9dd",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "mrKlMfFYU37E9PTq",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "openai/gpt-oss-20b:free",
+          "mode": "list",
+          "cachedResultName": "openai/gpt-oss-20b:free"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        25456,
+        19952
+      ],
+      "id": "e5db0421-ac2b-49aa-9ae5-f38e92de6817",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "mrKlMfFYU37E9PTq",
+          "name": "OpenAI account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Webhook Discord1": [
+      {
+        "json": {
+          "headers": {
+            "host": "pauloqa.app.n8n.cloud",
+            "user-agent": "node",
+            "content-length": "355",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "accept-language": "*",
+            "cache-control": "no-cache",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "2804:d55:5514:f700:c0c1:900:db16:4cb6",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "BR",
+            "cf-ray": "9e9737428e73c9fb-CWB",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "pragma": "no-cache",
+            "sec-fetch-mode": "cors",
+            "x-forwarded-for": "2804:d55:5514:f700:c0c1:900:db16:4cb6, 172.69.201.152",
+            "x-forwarded-host": "pauloqa.app.n8n.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "traefik-prod-users-gwc-20-76b98d8c9d-cgpz9",
+            "x-is-trusted": "yes",
+            "x-real-ip": "2804:d55:5514:f700:c0c1:900:db16:4cb6"
+          },
+          "params": {},
+          "query": {
+            "responseMode": "onReceived",
+            "responseCode": "200"
+          },
+          "body": {
+            "id": "DEL-470",
+            "status": "qa",
+            "action": "create",
+            "card": {
+              "id": "DEL-470",
+              "epic": "tes",
+              "title": "testtet",
+              "module": "tetstet",
+              "column": "qa",
+              "priority": "MÃ©dia",
+              "owner": "Paulo",
+              "businessGoal": "tetetetet",
+              "acceptanceCriteria": [
+                "tetetet"
+              ],
+              "qaNotes": "tetete",
+              "scenarios": [
+                {
+                  "id": "CT-AI-947",
+                  "title": "AI scenario draft for testtet",
+                  "source": "IA",
+                  "status": "Draft"
+                }
+              ]
+            }
+          },
+          "webhookUrl": "https://pauloqa.app.n8n.cloud/webhook/qa-platform/google-sheets-sync",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook Discord": {
+      "main": [
+        [
+          {
+            "node": "Load Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Healthcheck": {
+      "main": [
+        [
+          {
+            "node": "Healthcheck Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Config": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Payload": {
+      "main": [
+        [
+          {
+            "node": "Roteador Acao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Roteador Acao": {
+      "main": [
+        [
+          {
+            "node": "GS Ler Linhas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GS Ler Linhas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GS Adicionar CenÃ¡rio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GS Ler para Editar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GS Ler para Status",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GS Ler para Deletar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GS Ler Funcionais IA",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "GS Ler Performance IA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request Discord Status",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GS Adicionar Cenario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GS Ler Linhas": {
+      "main": [
+        [
+          {
+            "node": "Roteador PÃ³s-Leitura",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar CenÃ¡rio": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request Discord Status1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GS Adicionar CenÃ¡rio": {
+      "main": [
+        [
+          {
+            "node": "Preparar Prompt BDD IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmar AdiÃ§Ã£o": {
+      "main": [
+        [
+          {
+            "node": "Roteador SaÃ­da",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GS Ler para Status": {
+      "main": [
+        [
+          {
+            "node": "Preparar Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Status": {
+      "main": [
+        [
+          {
+            "node": "GS Atualizar Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GS Atualizar Status": {
+      "main": [
+        [
+          {
+            "node": "Confirmar Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmar Status": {
+      "main": [
+        [
+          {
+            "node": "Roteador SaÃ­da",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GS Ler para Editar": {
+      "main": [
+        [
+          {
+            "node": "Preparar EdiÃ§Ã£o",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar EdiÃ§Ã£o": {
+      "main": [
+        [
+          {
+            "node": "GS Atualizar EdiÃ§Ã£o",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GS Atualizar EdiÃ§Ã£o": {
+      "main": [
+        [
+          {
+            "node": "Confirmar EdiÃ§Ã£o",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmar EdiÃ§Ã£o": {
+      "main": [
+        [
+          {
+            "node": "Roteador SaÃ­da",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GS Deletar CenÃ¡rio": {
+      "main": [
+        [
+          {
+            "node": "Confirmar DeleÃ§Ã£o",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmar DeleÃ§Ã£o": {
+      "main": [
+        [
+          {
+            "node": "Roteador SaÃ­da",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Roteador PÃ³s-Leitura": {
+      "main": [
+        [
+          {
+            "node": "Filtrar e Formatar Busca",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Formatar CenÃ¡rio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar Contexto IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Contexto IA": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar Resposta IA": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Formatar Resposta IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GS Ler Funcionais IA": {
+      "main": [
+        [
+          {
+            "node": "Tag Funcionais IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GS Ler Performance IA": {
+      "main": [
+        [
+          {
+            "node": "Tag Performance IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Funcionais IA": {
+      "main": [
+        [
+          {
+            "node": "Merge IA Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Performance IA": {
+      "main": [
+        [
+          {
+            "node": "Merge IA Sheets",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge IA Sheets": {
+      "main": [
+        [
+          {
+            "node": "Preparar Contexto IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request Discord Status": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request Discord Status1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GS Ler para Deletar": {
+      "main": [
+        [
+          {
+            "node": "Encontrar CenÃ¡rio para Deletar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encontrar CenÃ¡rio para Deletar": {
+      "main": [
+        [
+          {
+            "node": "GS Deletar CenÃ¡rio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar e Formatar Busca": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request Discord Status1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Gherkin BDD": {
+      "main": [
+        [
+          {
+            "node": "Preparar Payload GitHub",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub Salvar Feature": {
+      "main": [
+        [
+          {
+            "node": "Formatar Resposta GitHub Feature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar Resposta GitHub Feature": {
+      "main": [
+        [
+          {
+            "node": "Confirmar AdiÃ§Ã£o",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Payload GitHub": {
+      "main": [
+        [
+          {
+            "node": "GitHub Buscar Feature Atual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Discord1": {
+      "main": [
+        [
+          {
+            "node": "Load Config Secondary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar Payload1": {
+      "main": [
+        [
+          {
+            "node": "Roteador Acao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub Buscar Feature Atual": {
+      "main": [
+        [
+          {
+            "node": "GitHub Arquivo Existe?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Body GitHub": {
+      "main": [
+        [
+          {
+            "node": "GitHub Salvar Feature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Prompt BDD IA": {
+      "main": [
+        [
+          {
+            "node": "AI Agent BDD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent BDD": {
+      "main": [
+        [
+          {
+            "node": "Formatar BDD IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar BDD IA": {
+      "main": [
+        [
+          {
+            "node": "Preparar Payload GitHub",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Next Status": {
+      "main": [
+        [
+          {
+            "node": "Load Config Secondary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Next Created": {
+      "main": [
+        [
+          {
+            "node": "Resposta API Scenario Created",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Roteador SaÃ­da": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request Discord Status1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resposta API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent BDD",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Config Secondary": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Payload1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub Arquivo Existe?": {
+      "main": [
+        [
+          {
+            "node": "Montar Body GitHub",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Montar Body GitHub Novo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Body GitHub Novo": {
+      "main": [
+        [
+          {
+            "node": "GitHub Salvar Feature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GS Adicionar Cenario": {
+      "main": [
+        [
+          {
+            "node": "Preparar Prompt BDD IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "3243af56-7413-4dc5-948e-9d7fc3bee581",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d711d50421ece2c545d1e9dfbd145ac9183420ab207103c777f3da861079b20a"
+  },
+  "id": "6ehKxb0pLFPiLcE7",
+  "tags": []
+}
