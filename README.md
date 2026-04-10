@@ -1,161 +1,36 @@
-# Playwright Salesforce Automation
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-Automação de testes Playwright para login no Salesforce com suporte a autenticação EMC.
+## Getting Started
 
-## 📋 Requisitos
-
-- Node.js 18+
-- npm ou yarn
-- Credenciais válidas do Salesforce
-
-## 🚀 Instalação
+First, run the development server:
 
 ```bash
-npm install
-npx playwright install --with-deps
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-## ⚙️ Configuração
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-### Variáveis de Ambiente
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-Crie um arquivo `.env` na raiz do projeto baseado em `.env.example`:
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-```env
-SALESFORCE_URL=https://seu-instance.sandbox.lightning.force.com/
-SALESFORCE_EMAIL=seu-email@dominio.com
-SALESFORCE_PASSWORD=sua-senha
-EMC_CODE=seu-codigo-emc
-VENDEDOR=Nome do Vendedor
-CPF=seu-cpf
-CEP=seu-cep
-ESTADO=SP
-```
+## Learn More
 
-## 📁 Estrutura do Projeto
+To learn more about Next.js, take a look at the following resources:
 
-```
-.
-├── src/
-│   ├── pages/          # Page Objects
-│   │   └── LoginPage.ts
-│   ├── utils/          # Utilitários
-│   └── fixtures/       # Dados de teste
-├── tests/
-│   ├── specs/          # Arquivos de teste
-│   └── login.spec.ts
-├── .env.example        # Template de variáveis
-├── playwright.config.ts # Configuração Playwright
-└── package.json
-```
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-## 🧪 Executar Testes
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-### Modo headless (sem interface)
-```bash
-npm test
-```
+## Deploy on Vercel
 
-### Modo headed (com navegador visível)
-```bash
-npm run test:headed
-```
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-### Modo interativo (UI)
-```bash
-npx playwright test --ui
-```
-
-### Ver relatório
-```bash
-npm run test:report
-```
-
-## 🔒 Segurança
-
-- ⚠️ **NUNCA** commite o arquivo `.env` com credenciais reais
-- Use GitHub Secrets para CI/CD
-- O arquivo `.env` está no `.gitignore`
-
-## 🔄 CI/CD
-
-Este projeto está configurado com GitHub Actions:
-
-- **Automático**: Executa ao fazer push na branch `main`
-- **Manual**: Dispare via **Actions** → **Run workflow**
-
-Os secrets devem estar configurados em **Settings** → **Secrets and variables** → **Actions**
-
-## 📝 Testes Disponíveis
-
-### Login Salesforce
-- Navega até o Salesforce
-- Realiza login com email e senha
-- Se aparecer campo EMC, preenche com código de autenticação
-- Valida sucesso do login
-
-## 🛠️ Desenvolvimento
-
-### Adicionar Novo Page Object
-
-```typescript
-// src/pages/NovaPage.ts
-import { Page } from '@playwright/test';
-
-export class NovaPage {
-  constructor(page: Page) {
-    this.page = page;
-  }
-
-  async minhaAcao() {
-    // implementar
-  }
-}
-```
-
-### Criar Novo Teste
-
-```typescript
-// tests/specs/novo.spec.ts
-import { test } from '@playwright/test';
-import { NovaPage } from '../src/pages/NovaPage';
-
-test('descrição do teste', async ({ page }) => {
-  const novaPage = new NovaPage(page);
-  await novaPage.minhaAcao();
-});
-```
-
-## 📊 Relatórios
-
-Depois de executar os testes, visualize o relatório:
-
-```bash
-npm run test:report
-```
-
-Os relatórios ficarão em `playwright-report/`
-
-## 🐛 Troubleshooting
-
-### Credenciais não encontradas
-- Verifique se `.env` existe e está preenchido
-- Ou configure variáveis de ambiente do sistema
-
-### Elemento não encontrado
-- Verifique os seletores em `src/pages/LoginPage.ts`
-- Use `npx playwright codegen` para gerar seletores
-
-### Timeout
-- Aumentar timeout em `playwright.config.ts`
-- Verificar conexão de internet
-
-## 📞 Suporte
-
-Para dúvidas ou problemas, verifique:
-- [Documentação Playwright](https://playwright.dev)
-- [Configuração de variáveis](https://github.com/motdotla/dotenv)
-
-## 📄 Licença
-
-Este projeto é privado.
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
