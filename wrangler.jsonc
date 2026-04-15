@@ -1,25 +1,27 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "main": ".open-next/worker.js",
   "name": "orionsystem",
+  "main": ".open-next/worker.js",
   "compatibility_date": "2026-04-15",
-  "compatibility_flags": [
-    "nodejs_compat"
-  ],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  },
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "services": [
     {
       "binding": "WORKER_SELF_REFERENCE",
       "service": "orionsystem"
     }
   ],
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "18b73d371c934fa18cb285b2db5358bd",
+      "localConnectionString": "postgresql://postgres.yxgfumvkxvxkpgxdhigr:%40%40Amosurfar2026@aws-1-us-west-2.pooler.supabase.com:6543/postgres"
+    }
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
   "images": {
     "binding": "IMAGES"
-  },
-  "observability": {
-    "enabled": true
   }
 }

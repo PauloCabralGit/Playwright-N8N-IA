@@ -2,6 +2,7 @@ import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg
 
 type GlobalWithPool = typeof globalThis & {
   __qaPgPool?: Pool;
+  __qaPgPoolPromise?: Promise<Pool>;
   __qaPgSchemaReady?: Promise<void>;
   __qaPgSchemaVersion?: string;
 };
@@ -10,26 +11,48 @@ const SCHEMA_VERSION = '2026-04-14-discord-bot-fields';
 
 function getDatabaseUrl() {
   const url =
+    process.env.CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE ||
     process.env.DATABASE_URL ||
     process.env.POSTGRES_URL ||
     process.env.POSTGRES_CONNECTION_STRING ||
     process.env.PG_CONNECTION_STRING;
 
-  if (!url) {
-    throw new Error('DATABASE_URL is required to use Postgres persistence.');
-  }
-
-  return url;
+  return url || '';
 }
 
-function getPool() {
-  const globalScope = globalThis as GlobalWithPool;
-  if (!globalScope.__qaPgPool) {
-    globalScope.__qaPgPool = new Pool({
-      connectionString: getDatabaseUrl(),
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
-    });
+async function resolveDatabaseUrl() {
+  const localUrl = getDatabaseUrl();
+  if (localUrl) {
+    return localUrl;
   }
+
+  try {
+    const { getCloudflareContext } = await import('@opennextjs/cloudflare');
+    const cloudflareContext = await getCloudflareContext({ async: true });
+    const binding = (cloudflareContext.env as { HYPERDRIVE?: { connectionString?: string } }).HYPERDRIVE;
+    const connectionString = String(binding?.connectionString || '').trim();
+    if (connectionString) {
+      return connectionString;
+    }
+  } catch {
+    // Ignore runtime lookup failures and fall back to the local env error below.
+  }
+
+  throw new Error('DATABASE_URL is required to use Postgres persistence.');
+}
+
+async function getPool() {
+  const globalScope = globalThis as GlobalWithPool;
+  if (!globalScope.__qaPgPoolPromise) {
+    globalScope.__qaPgPoolPromise = (async () => {
+      const connectionString = await resolveDatabaseUrl();
+      return new Pool({
+        connectionString,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+      });
+    })();
+  }
+  globalScope.__qaPgPool = await globalScope.__qaPgPoolPromise;
   return globalScope.__qaPgPool;
 }
 
@@ -42,7 +65,8 @@ async function ensureSchema() {
 
   if (!globalScope.__qaPgSchemaReady) {
     globalScope.__qaPgSchemaReady = (async () => {
-      const client = await getPool().connect();
+      const pool = await getPool();
+      const client = await pool.connect();
       try {
         await client.query(`
           CREATE TABLE IF NOT EXISTS tenants (
@@ -163,12 +187,14 @@ export async function dbQuery<T extends QueryResultRow = QueryResultRow>(
   values: unknown[] = [],
 ): Promise<QueryResult<T>> {
   await ensureSchema();
-  return getPool().query<T>(text, values);
+  const pool = await getPool();
+  return pool.query<T>(text, values);
 }
 
 export async function dbTransaction<T>(handler: (client: PoolClient) => Promise<T>): Promise<T> {
   await ensureSchema();
-  const client = await getPool().connect();
+  const pool = await getPool();
+  const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const result = await handler(client);
