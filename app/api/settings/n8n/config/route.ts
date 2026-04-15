@@ -34,6 +34,16 @@ export async function GET(request: NextRequest) {
       // Discord
       DISCORD_WEBHOOK: n8nSettings.discordWebhook,
       discordWebhook: n8nSettings.discordWebhook,
+      DISCORD_APPLICATION_ID: n8nSettings.discordApplicationId,
+      discordApplicationId: n8nSettings.discordApplicationId,
+      DISCORD_PUBLIC_KEY: n8nSettings.discordPublicKey,
+      discordPublicKey: n8nSettings.discordPublicKey,
+      DISCORD_BOT_TOKEN: n8nSettings.discordBotToken,
+      discordBotToken: n8nSettings.discordBotToken,
+      DISCORD_GUILD_ID: n8nSettings.discordGuildId,
+      discordGuildId: n8nSettings.discordGuildId,
+      DISCORD_COMMAND_NAME: n8nSettings.discordCommandName,
+      discordCommandName: n8nSettings.discordCommandName,
 
       // GitHub
       GITHUB_OWNER: n8nSettings.githubOwner,
@@ -64,7 +74,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    await request.json();
 
     // Validar e processar configurações adicionais se enviadas
     // Por enquanto apenas logamos

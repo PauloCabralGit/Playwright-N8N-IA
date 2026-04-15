@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AlertCircle, ArrowRight, Bot, CheckCircle2, Lock, Sparkles, UserPlus } from 'lucide-react';
 
@@ -48,7 +48,9 @@ type FormState = {
   webhookBaseUrl: string;
   webhookPath: string;
   apiKey: string;
-  discordWebhook: string;
+  discordBotToken: string;
+  discordGuildId: string;
+  discordCommandName: string;
   githubOwner: string;
   githubRepo: string;
   githubBranch: string;
@@ -65,23 +67,14 @@ const defaultSignupForm: FormState = {
   webhookBaseUrl: '',
   webhookPath: '',
   apiKey: '',
-  discordWebhook: '',
+  discordBotToken: '',
+  discordGuildId: '',
+  discordCommandName: 'qa',
   githubOwner: '',
   githubRepo: '',
   githubBranch: 'main',
   githubToken: '',
 };
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[^\w\s-]/g, '')
-    .trim()
-    .replace(/[\s_-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-+/g, '-');
-}
 
 function isHttpUrl(value: string) {
   try {
@@ -111,17 +104,10 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
     }
   };
 
-  useEffect(() => {
-    if (!signupForm.webhookPath.trim() && signupForm.companyName.trim()) {
-      setSignupForm((prev) => ({ ...prev, webhookPath: slugify(prev.companyName) || 'cliente' }));
-    }
-  }, [signupForm.companyName, signupForm.webhookPath]);
-
   const webhookPreview = useMemo(() => {
     const base = signupForm.webhookBaseUrl.trim().replace(/\/+$/, '');
-    const path = slugify(signupForm.webhookPath || signupForm.companyName || 'cliente');
-    return base ? `${base}/webhook/${path}` : 'https://seu-n8n.com/webhook/seu-cliente';
-  }, [signupForm.webhookBaseUrl, signupForm.webhookPath, signupForm.companyName]);
+    return base ? `${base}/webhook/qa-platform/unified-sync` : 'https://seu-n8n.com/webhook/qa-platform/unified-sync';
+  }, [signupForm.webhookBaseUrl]);
 
   const validateSignup = () => {
     const required: Array<[keyof FormState, string]> = [
@@ -132,8 +118,8 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
       ['address', 'Endereço'],
       ['appPublicUrl', 'URL pública do app'],
       ['webhookBaseUrl', 'Base URL do webhook'],
-      ['webhookPath', 'Path do webhook'],
       ['apiKey', 'API Key do n8n'],
+      ['discordBotToken', 'Discord Bot Token'],
       ['githubOwner', 'GitHub Owner'],
       ['githubRepo', 'GitHub Repo'],
       ['githubBranch', 'GitHub Branch'],
@@ -163,8 +149,8 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
       nextIssues.push('Base URL do webhook está inválida');
     }
 
-    if (signupForm.discordWebhook && !/^https:\/\/(canary\.|ptb\.)?discord\.com\/api\/webhooks\/[^/]+\/[^/]+$/i.test(signupForm.discordWebhook.trim())) {
-      nextIssues.push('Discord Webhook está inválido');
+    if (signupForm.discordBotToken.trim().length < 10) {
+      nextIssues.push('Discord Bot Token está inválido');
     }
 
     if (signupForm.githubToken && !/^(ghp_|github_pat_)/i.test(signupForm.githubToken.trim())) {
@@ -196,6 +182,10 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
 
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || !payload?.ok) {
+        if (payload?.code === 'EMAIL_EXISTS') {
+          setMode('login');
+          setLoginEmail(signupForm.email.trim());
+        }
         setStatus('error');
         setIssues(Array.isArray(payload?.issues) ? payload.issues : []);
         setMessage(payload?.error || 'Não foi possível criar a conta.');
@@ -203,8 +193,7 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
       }
 
       setStatus('success');
-      setMessage('Conta criada e workflow publicado com sucesso.');
-      persistAuthBootstrap(payload);
+      setMessage('Conta criada com sucesso. Você pode fazer login agora.');
       onAuthenticated(payload);
     } catch (error) {
       setStatus('error');
@@ -259,15 +248,15 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
                 {accentText}
               </h1>
               <p className="mt-4 max-w-xl text-sm leading-6 text-slate-300">
-                Cada empresa ganha sua própria conta, seu próprio webhook e o workflow publicado para a instância dela.
-                O cadastro cria o tenant, publica o fluxo no n8n e testa a conexão antes de liberar o acesso.
+                Cada empresa ganha sua própria conta e o workflow publicado para a instância dela.
+                O cadastro cria o tenant, envia o identificador no payload e testa a conexão antes de liberar o acesso.
               </p>
             </div>
 
             <div className="mt-10 grid gap-3 sm:grid-cols-2">
               {[
                 { icon: <UserPlus className="h-4 w-4" />, title: 'Cadastro de empresa', text: 'CNPJ, endereço e dados de acesso.' },
-                { icon: <Bot className="h-4 w-4" />, title: 'Workflow por cliente', text: 'Webhooks separados por tenant.' },
+                { icon: <Bot className="h-4 w-4" />, title: 'Bot do Discord', text: 'Comandos slash para buscar, criar e consultar.' },
                 { icon: <CheckCircle2 className="h-4 w-4" />, title: 'Teste automático', text: 'Publica e valida a integração.' },
                 { icon: <Sparkles className="h-4 w-4" />, title: 'SaaS pronto', text: 'Cada cliente tem sua própria configuração.' },
               ].map((item) => (
@@ -381,11 +370,7 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
                   <div className="md:col-span-2">
                     <label className="mb-1 block text-xs font-medium text-slate-300">Nome da empresa</label>
                     <Input value={signupForm.companyName} onChange={(e) => setSignupForm((prev) => {
-                      const next = { ...prev, companyName: e.target.value };
-                      if (!prev.webhookPath.trim()) {
-                        next.webhookPath = slugify(e.target.value) || 'cliente';
-                      }
-                      return next;
+                      return { ...prev, companyName: e.target.value };
                     })} className="rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500" placeholder="Empresa LTDA" />
                   </div>
                   <div>
@@ -405,22 +390,31 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
                       <label className="mb-1 block text-xs font-medium text-slate-300">Webhook base URL</label>
                       <Input value={signupForm.webhookBaseUrl} onChange={(e) => setSignupForm((prev) => ({ ...prev, webhookBaseUrl: e.target.value }))} type="url" className="rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500" placeholder="https://pauloqa.app.n8n.cloud" />
                     </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-300">Webhook path</label>
-                      <Input value={signupForm.webhookPath} onChange={(e) => setSignupForm((prev) => ({ ...prev, webhookPath: e.target.value }))} className="rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500" placeholder="cliente-x" />
-                    </div>
                   </div>
-                  <div className="md:col-span-2 rounded-2xl border border-white/10 bg-black/20 p-3 text-xs text-slate-300">
-                    <div className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Webhook final</div>
-                    <div className="mt-1 font-mono text-[11px] text-slate-200">{webhookPreview}</div>
+                <div className="md:col-span-2 rounded-2xl border border-cyan-400/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">
+                    <div className="font-semibold">Webhook path fixo</div>
+                    <p className="mt-1 text-cyan-100/80">
+                      O path não muda por empresa. O tenant é enviado no corpo da requisição e o n8n resolve a conta certa por esse dado.
+                    </p>
+                    <div className="mt-2 font-mono text-[11px] text-cyan-50">
+                      {webhookPreview}
+                    </div>
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-slate-300">API Key do n8n</label>
                     <Input value={signupForm.apiKey} onChange={(e) => setSignupForm((prev) => ({ ...prev, apiKey: e.target.value }))} type="password" className="rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500" placeholder="sk_..." />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-300">Discord Webhook (opcional)</label>
-                    <Input value={signupForm.discordWebhook} onChange={(e) => setSignupForm((prev) => ({ ...prev, discordWebhook: e.target.value }))} type="url" className="rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500" placeholder="https://discord.com/api/webhooks/..." />
+                    <label className="mb-1 block text-xs font-medium text-slate-300">Discord Bot Token</label>
+                    <Input value={signupForm.discordBotToken} onChange={(e) => setSignupForm((prev) => ({ ...prev, discordBotToken: e.target.value }))} type="password" className="rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500" placeholder="Bot ..." />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-300">Discord Guild ID</label>
+                    <Input value={signupForm.discordGuildId} onChange={(e) => setSignupForm((prev) => ({ ...prev, discordGuildId: e.target.value }))} className="rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500" placeholder="Opcional" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-300">Comando do bot</label>
+                    <Input value={signupForm.discordCommandName} onChange={(e) => setSignupForm((prev) => ({ ...prev, discordCommandName: e.target.value }))} className="rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500" placeholder="qa" />
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-slate-300">GitHub Owner</label>
@@ -467,8 +461,8 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
 
             <div className="mt-6 flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-300">
               <Lock className="h-4 w-4 text-fuchsia-300" />
-              O tenant, o webhook e o workflow são criados por empresa. Cada conta trabalha com a própria configuração.
-            </div>
+                O tenant e o workflow são criados por empresa. O webhook é fixo e a conta certa é escolhida pelo tenant enviado no payload.
+              </div>
           </CardContent>
         </Card>
       </div>

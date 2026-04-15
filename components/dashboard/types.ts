@@ -49,6 +49,11 @@ export type N8nSettings = {
   webhookUrl: string;
   apiKey: string;
   discordWebhook: string;
+  discordApplicationId: string;
+  discordPublicKey: string;
+  discordBotToken: string;
+  discordGuildId: string;
+  discordCommandName: string;
   githubOwner: string;
   githubRepo: string;
   githubBranch: string;

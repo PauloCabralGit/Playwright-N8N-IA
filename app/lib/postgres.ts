@@ -3,7 +3,10 @@ import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg
 type GlobalWithPool = typeof globalThis & {
   __qaPgPool?: Pool;
   __qaPgSchemaReady?: Promise<void>;
+  __qaPgSchemaVersion?: string;
 };
+
+const SCHEMA_VERSION = '2026-04-14-discord-bot-fields';
 
 function getDatabaseUrl() {
   const url =
@@ -32,6 +35,11 @@ function getPool() {
 
 async function ensureSchema() {
   const globalScope = globalThis as GlobalWithPool;
+  if (globalScope.__qaPgSchemaVersion !== SCHEMA_VERSION) {
+    globalScope.__qaPgSchemaReady = undefined;
+    globalScope.__qaPgSchemaVersion = SCHEMA_VERSION;
+  }
+
   if (!globalScope.__qaPgSchemaReady) {
     globalScope.__qaPgSchemaReady = (async () => {
       const client = await getPool().connect();
@@ -49,6 +57,11 @@ async function ensureSchema() {
             webhook_url TEXT NOT NULL,
             api_key TEXT NOT NULL,
             discord_webhook TEXT NOT NULL DEFAULT '',
+            discord_application_id TEXT NOT NULL DEFAULT '',
+            discord_public_key TEXT NOT NULL DEFAULT '',
+            discord_bot_token TEXT NOT NULL DEFAULT '',
+            discord_guild_id TEXT NOT NULL DEFAULT '',
+            discord_command_name TEXT NOT NULL DEFAULT 'qa',
             github_owner TEXT NOT NULL,
             github_repo TEXT NOT NULL,
             github_branch TEXT NOT NULL DEFAULT 'main',
@@ -63,6 +76,18 @@ async function ensureSchema() {
 
           ALTER TABLE tenants
             ADD COLUMN IF NOT EXISTS workflow_json JSONB NOT NULL DEFAULT '{}'::jsonb;
+          ALTER TABLE tenants
+            ADD COLUMN IF NOT EXISTS discord_application_id TEXT NOT NULL DEFAULT '';
+          ALTER TABLE tenants
+            ADD COLUMN IF NOT EXISTS discord_public_key TEXT NOT NULL DEFAULT '';
+          ALTER TABLE tenants
+            ADD COLUMN IF NOT EXISTS discord_bot_token TEXT NOT NULL DEFAULT '';
+          ALTER TABLE tenants
+            ADD COLUMN IF NOT EXISTS discord_guild_id TEXT NOT NULL DEFAULT '';
+          ALTER TABLE tenants
+            ADD COLUMN IF NOT EXISTS discord_command_name TEXT NOT NULL DEFAULT 'qa';
+          ALTER TABLE tenants
+            ADD COLUMN IF NOT EXISTS discord_webhook TEXT NOT NULL DEFAULT '';
 
           CREATE TABLE IF NOT EXISTS accounts (
             id TEXT PRIMARY KEY,

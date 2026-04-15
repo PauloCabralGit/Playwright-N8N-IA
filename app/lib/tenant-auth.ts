@@ -36,13 +36,6 @@ export type TenantProfile = N8nSettings & {
   updatedAt: string;
 };
 
-type SessionRecord = {
-  token: string;
-  accountId: string;
-  createdAt: string;
-  lastSeenAt: string;
-};
-
 type PasswordResetRequestResult = {
   ok: boolean;
   resetUrl?: string;
@@ -61,6 +54,11 @@ type SignupInput = {
   webhookPath: string;
   apiKey: string;
   discordWebhook: string;
+  discordApplicationId: string;
+  discordPublicKey: string;
+  discordBotToken: string;
+  discordGuildId: string;
+  discordCommandName: string;
   githubOwner: string;
   githubRepo: string;
   githubBranch: string;
@@ -98,6 +96,10 @@ function normalizeWebhookPath(value: string) {
     .toLowerCase();
 }
 
+function resolveTenantWebhookPath(inputPath: string, tenantSlug: string) {
+  return normalizeWebhookPath(inputPath || tenantSlug);
+}
+
 function hashPassword(password: string) {
   const salt = randomBytes(16).toString('hex');
   const hash = pbkdf2Sync(password, salt, 120000, 32, 'sha256').toString('hex');
@@ -118,14 +120,33 @@ function verifyPassword(password: string, stored: string) {
   return timingSafeEqual(expected, actual);
 }
 
-function buildWebhookUrl(webhookBaseUrl: string, webhookPath: string) {
-  const base = webhookBaseUrl.trim().replace(/\/+$/, '');
-  const path = normalizeWebhookPath(webhookPath);
-  return `${base}/webhook/${path}`;
+function resolveWebhookBaseUrlFromValue(value: string) {
+  const trimmed = value.trim().replace(/\/+$/, '');
+  if (!trimmed) return '';
+
+  try {
+    const url = new URL(trimmed);
+    return url.origin.replace(/\/+$/, '');
+  } catch {
+    return trimmed;
+  }
 }
 
-export function buildTenantWebhookUrl(webhookBaseUrl: string, webhookPath: string) {
-  return buildWebhookUrl(webhookBaseUrl, webhookPath);
+function buildWebhookUrl(webhookBaseUrl: string, path: string) {
+  const base = resolveWebhookBaseUrlFromValue(webhookBaseUrl);
+  return base ? `${base}/webhook/${path}` : '';
+}
+
+function normalizeDiscordCommandName(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-') || 'qa';
+}
+
+export function buildTenantWebhookUrl(webhookBaseUrl: string) {
+  return buildWebhookUrl(webhookBaseUrl, 'qa-platform/unified-sync');
+}
+
+export function buildDiscordWebhookUrl(webhookBaseUrl: string) {
+  return buildWebhookUrl(webhookBaseUrl, 'discord-qa');
 }
 
 export function buildTenantHealthcheckUrl(webhookUrl: string, tenantSlug?: string) {
@@ -135,6 +156,7 @@ export function buildTenantHealthcheckUrl(webhookUrl: string, tenantSlug?: strin
 }
 
 function defaultTenantSettings(input: SignupInput, tenantId: string, tenantSlug: string): TenantProfile {
+  const webhookPath = resolveTenantWebhookPath(input.webhookPath, tenantSlug);
   return {
     id: tenantId,
     slug: tenantSlug,
@@ -143,10 +165,15 @@ function defaultTenantSettings(input: SignupInput, tenantId: string, tenantSlug:
     address: input.address.trim(),
     appPublicUrl: input.appPublicUrl.trim(),
     webhookBaseUrl: input.webhookBaseUrl.trim().replace(/\/+$/, ''),
-    webhookPath: normalizeWebhookPath(input.webhookPath),
-    webhookUrl: buildWebhookUrl(input.webhookBaseUrl, input.webhookPath),
+    webhookPath,
+    webhookUrl: buildWebhookUrl(input.webhookBaseUrl),
     apiKey: input.apiKey.trim(),
     discordWebhook: input.discordWebhook.trim(),
+    discordApplicationId: input.discordApplicationId.trim(),
+    discordPublicKey: input.discordPublicKey.trim(),
+    discordBotToken: input.discordBotToken.trim(),
+    discordGuildId: input.discordGuildId.trim(),
+    discordCommandName: normalizeDiscordCommandName(input.discordCommandName || 'qa'),
     githubOwner: input.githubOwner.trim(),
     githubRepo: input.githubRepo.trim(),
     githubBranch: input.githubBranch.trim() || 'main',
@@ -187,6 +214,11 @@ function mapTenant(row: Record<string, unknown> | null | undefined): TenantProfi
     webhookUrl: String(row.webhook_url || ''),
     apiKey: String(row.api_key || ''),
     discordWebhook: String(row.discord_webhook || ''),
+    discordApplicationId: String(row.discord_application_id || ''),
+    discordPublicKey: String(row.discord_public_key || ''),
+    discordBotToken: String(row.discord_bot_token || ''),
+    discordGuildId: String(row.discord_guild_id || ''),
+    discordCommandName: String(row.discord_command_name || 'qa'),
     githubOwner: String(row.github_owner || ''),
     githubRepo: String(row.github_repo || ''),
     githubBranch: String(row.github_branch || 'main'),
@@ -222,6 +254,8 @@ function readWorkflowTemplate() {
     [key: string]: unknown;
   };
 }
+
+type WorkflowConnections = Record<string, { main?: Array<unknown> } | undefined>;
 
 function buildResetPasswordUrl(rawToken: string) {
   const url = new URL('/reset-password', 'http://localhost');
@@ -271,16 +305,33 @@ export async function getTenantByIdPublic(tenantId: string) {
   return mapTenant(result.rows[0]);
 }
 
+export async function getAccountByTenantIdPublic(tenantId: string) {
+  const result = await dbQuery<Record<string, unknown>>(
+    `SELECT * FROM accounts WHERE tenant_id = $1 LIMIT 1`,
+    [tenantId],
+  );
+  return mapAccount(result.rows[0]);
+}
+
+export async function getTenantByDiscordApplicationIdPublic(applicationId: string) {
+  const result = await dbQuery<Record<string, unknown>>(
+    `SELECT * FROM tenants WHERE discord_application_id = $1 LIMIT 1`,
+    [applicationId],
+  );
+  return mapTenant(result.rows[0]);
+}
+
 export async function upsertTenantProfile(tenant: TenantProfile) {
   await dbQuery(
     `INSERT INTO tenants (
       id, slug, company_name, cnpj, address, app_public_url, webhook_base_url, webhook_path, webhook_url,
-      api_key, discord_webhook, github_owner, github_repo, github_branch, github_token, workflow_json,
+      api_key, discord_webhook, discord_application_id, discord_public_key, discord_bot_token, discord_guild_id, discord_command_name,
+      github_owner, github_repo, github_branch, github_token, workflow_json,
       workflow_published_at, workflow_download_url, loaded_at, updated_at, created_at
     ) VALUES (
       $1,$2,$3,$4,$5,$6,$7,$8,$9,
-      $10,$11,$12,$13,$14,$15,$16,
-      $17,$18,$19,$20,$21
+      $10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,
+      $22,$23,$24,$25,$26
     )
     ON CONFLICT (id) DO UPDATE SET
       slug = EXCLUDED.slug,
@@ -293,6 +344,11 @@ export async function upsertTenantProfile(tenant: TenantProfile) {
       webhook_url = EXCLUDED.webhook_url,
       api_key = EXCLUDED.api_key,
       discord_webhook = EXCLUDED.discord_webhook,
+      discord_application_id = EXCLUDED.discord_application_id,
+      discord_public_key = EXCLUDED.discord_public_key,
+      discord_bot_token = EXCLUDED.discord_bot_token,
+      discord_guild_id = EXCLUDED.discord_guild_id,
+      discord_command_name = EXCLUDED.discord_command_name,
       github_owner = EXCLUDED.github_owner,
       github_repo = EXCLUDED.github_repo,
       github_branch = EXCLUDED.github_branch,
@@ -315,6 +371,11 @@ export async function upsertTenantProfile(tenant: TenantProfile) {
       tenant.webhookUrl,
       tenant.apiKey,
       tenant.discordWebhook || '',
+      tenant.discordApplicationId || '',
+      tenant.discordPublicKey || '',
+      tenant.discordBotToken || '',
+      tenant.discordGuildId || '',
+      tenant.discordCommandName || 'qa',
       tenant.githubOwner,
       tenant.githubRepo,
       tenant.githubBranch,
@@ -369,12 +430,13 @@ export async function createAccountAndTenant(input: SignupInput) {
         await client.query(
           `INSERT INTO tenants (
             id, slug, company_name, cnpj, address, app_public_url, webhook_base_url, webhook_path, webhook_url,
-            api_key, discord_webhook, github_owner, github_repo, github_branch, github_token, workflow_json,
+            api_key, discord_webhook, discord_application_id, discord_public_key, discord_bot_token, discord_guild_id, discord_command_name,
+            github_owner, github_repo, github_branch, github_token, workflow_json,
             workflow_published_at, workflow_download_url, loaded_at, updated_at, created_at
           ) VALUES (
             $1,$2,$3,$4,$5,$6,$7,$8,$9,
-            $10,$11,$12,$13,$14,$15,$16,
-            $17,$18,$19,$20,$21
+            $10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,
+            $22,$23,$24,$25,$26
           )`,
           [
             tenant.id,
@@ -388,6 +450,11 @@ export async function createAccountAndTenant(input: SignupInput) {
             tenant.webhookUrl,
             tenant.apiKey,
             tenant.discordWebhook || '',
+            tenant.discordApplicationId || '',
+            tenant.discordPublicKey || '',
+            tenant.discordBotToken || '',
+            tenant.discordGuildId || '',
+            tenant.discordCommandName || 'qa',
             tenant.githubOwner,
             tenant.githubRepo,
             tenant.githubBranch,
@@ -572,76 +639,65 @@ export async function updateTenantForRequest(request: NextRequest | undefined, p
 export function buildTenantWorkflow(tenant: TenantProfile) {
   const template = readWorkflowTemplate();
 
-  const appPublicUrl = tenant.appPublicUrl.replace(/\/+$/, '');
-  const configEndpoint = `${appPublicUrl}/api/settings/n8n/config?tenant=${encodeURIComponent(tenant.id)}`;
-  const paths = {
-    discord: `discord-qa/${tenant.slug}`,
-    healthcheck: `qa-platform/${tenant.slug}/healthcheck`,
-    sync: `qa-platform/${tenant.slug}/google-sheets-sync`,
-    status: `qa-platform/${tenant.slug}/scenario-status-update`,
-    created: `qa-platform/${tenant.slug}/scenario-created`,
-  };
+  const fallbackAppPublicUrl = 'https://mathilde-obcuneate-allusively.ngrok-free.dev';
+  const resolvedAppPublicUrl = (tenant.appPublicUrl || fallbackAppPublicUrl).trim();
+  const appPublicUrl = resolvedAppPublicUrl.replace(/\/+$/, '');
+  const configEndpoint = `={{ '${appPublicUrl}/api/settings/n8n/config?tenant=' + encodeURIComponent($json.tenantId || $json.tenantSlug || '') }}`;
 
-  const nodes = template.nodes.map((node) => {
+  const removedNodes = new Set([
+    'Webhook Healthcheck',
+    'Load Config Secondary',
+    'Normalizar Payload1',
+    'Webhook Next Status',
+    'Webhook Next Created',
+  ]);
+
+  const nodes = template.nodes
+    .filter((node) => !removedNodes.has(node.name))
+    .map((node) => {
     const next = { ...node, parameters: { ...(node.parameters || {}) } };
 
-    if (next.name === 'Load Config' || next.name === 'Load Config Secondary') {
+    if (next.name === 'Load Config') {
       next.parameters = {
         ...next.parameters,
         url: configEndpoint,
       };
     }
 
-    if (next.name === 'Webhook Discord') {
+    if (next.name === 'Webhook Discord' || next.name === 'Webhook Discord1') {
       next.parameters = {
         ...next.parameters,
-        path: paths.discord,
+        path: 'discord-qa',
       };
     }
 
-    if (next.name === 'Webhook Healthcheck') {
-      next.parameters = {
-        ...next.parameters,
-        path: paths.healthcheck,
-      };
-    }
-
-    if (next.name === 'Webhook Discord1') {
-      next.parameters = {
-        ...next.parameters,
-        path: paths.sync,
-      };
-    }
-
-    if (next.name === 'Webhook Next Status') {
-      next.parameters = {
-        ...next.parameters,
-        path: paths.status,
-      };
-    }
-
-    if (next.name === 'Webhook Next Created') {
-      next.parameters = {
-        ...next.parameters,
-        path: paths.created,
-      };
-    }
-
-    if (next.name === 'Normalizar Payload' || next.name === 'Normalizar Payload1') {
-      const code = String(next.parameters.jsCode || '');
-      next.parameters = {
-        ...next.parameters,
-        jsCode: code.replace(
-          /update_status:\s*['"]status['"],/,
-          "update_status: 'status',\n  n8n_connection_test: 'pingqa',",
-        ),
-      };
+    for (const [key, value] of Object.entries(next.parameters)) {
+      if (typeof value === 'string' && value.includes("$('Webhook Discord1')")) {
+        next.parameters[key] = value.replaceAll("$('Webhook Discord1')", "$('Webhook Discord')");
+      }
     }
 
     return next;
   });
 
-  const routeOutputs = (template.connections as Record<string, any>)?.['Roteador Acao']?.main?.[0];
+  const sanitizedConnections = Object.fromEntries(
+    Object.entries(template.connections as WorkflowConnections)
+      .filter(([name]) => !removedNodes.has(name))
+      .map(([name, value]) => {
+        if (!value?.main) {
+          return [name, value];
+        }
+
+        const main = value.main
+          .map((group) => (Array.isArray(group) ? group.filter((link) => link && typeof link === 'object' && !removedNodes.has(String((link as { node?: string }).node || ''))) : group))
+          .filter((group) => Array.isArray(group) ? group.length > 0 : true);
+
+        return [name, { ...value, main }];
+      })
+      .filter(([, value]) => Boolean(value))
+  );
+
+  const routeOutputs = (sanitizedConnections as WorkflowConnections)?.['Roteador Acao']?.main?.[0] as Array<unknown> | undefined;
   if (Array.isArray(routeOutputs) && routeOutputs[7]) {
     routeOutputs[7] = [
       {
@@ -654,8 +710,9 @@ export function buildTenantWorkflow(tenant: TenantProfile) {
 
   return {
     ...template,
-    name: `${tenant.companyName} - QA Discord`,
+    name: `${tenant.companyName} - QA Discord + Banco de Dados`,
     nodes,
+    connections: sanitizedConnections,
   };
 }
 
