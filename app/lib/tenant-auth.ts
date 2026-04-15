@@ -166,7 +166,7 @@ function defaultTenantSettings(input: SignupInput, tenantId: string, tenantSlug:
     appPublicUrl: input.appPublicUrl.trim(),
     webhookBaseUrl: input.webhookBaseUrl.trim().replace(/\/+$/, ''),
     webhookPath,
-    webhookUrl: buildWebhookUrl(input.webhookBaseUrl),
+    webhookUrl: buildWebhookUrl(input.webhookBaseUrl, webhookPath),
     apiKey: input.apiKey.trim(),
     discordWebhook: input.discordWebhook.trim(),
     discordApplicationId: input.discordApplicationId.trim(),
