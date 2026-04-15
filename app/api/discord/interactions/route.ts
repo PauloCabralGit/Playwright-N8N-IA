@@ -113,6 +113,7 @@ export async function POST(request: NextRequest) {
   const interactionToken = String(body.token || '').trim();
   const interactionId = String(body.id || '').trim();
   const normalized = normalizeDiscordInteractionPayload(body);
+  const normalizedUser = String((normalized as Record<string, unknown>).user || '').trim();
   const config = await getN8nConfig(request, tenant.id);
   const discordWebhookUrl = buildDiscordWebhookUrl(config.webhookBaseUrl || config.webhookUrl);
 
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest) {
         ((member?.user as Record<string, unknown> | undefined)?.username as string | undefined) ||
         String(user?.global_name || '') ||
         String(user?.username || '') ||
-        normalized.user ||
+        normalizedUser ||
         'discord',
     };
 
