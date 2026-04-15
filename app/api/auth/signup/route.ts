@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   buildTenantWebhookUrl,
   createAccountAndTenant,
-  upsertTenantProfile,
   publishTenantWorkflow,
+  upsertTenantProfile,
 } from '@/app/lib/tenant-auth';
 import { registerDiscordSlashCommands, resolveDiscordApplicationFromBotToken } from '@/app/lib/discord-bot';
 import type { N8nSettings } from '@/components/dashboard/types';
@@ -62,8 +62,11 @@ async function testWebhook(settings: Partial<N8nSettings>) {
 }
 
 export async function POST(request: NextRequest) {
+  let stage = 'request:parse';
+
   try {
     const body = (await request.json()) as SignupBody;
+    stage = 'request:validate';
 
     const required: Array<keyof SignupBody> = [
       'email',
@@ -82,17 +85,21 @@ export async function POST(request: NextRequest) {
 
     const missing = required.filter((field) => !String(body[field] || '').trim());
     if (missing.length > 0) {
-      return NextResponse.json({ ok: false, error: 'Campos obrigatórios ausentes.', issues: missing }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: 'Campos obrigatorios ausentes.', issues: missing },
+        { status: 400 },
+      );
     }
 
     if (!isValidUrl(body.appPublicUrl)) {
-      return NextResponse.json({ ok: false, error: 'URL pública inválida.' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'URL publica invalida.' }, { status: 400 });
     }
 
     if (!isValidUrl(body.webhookBaseUrl)) {
-      return NextResponse.json({ ok: false, error: 'Webhook base URL inválida.' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Webhook base URL invalida.' }, { status: 400 });
     }
 
+    stage = 'account:create';
     const signupResult = await createAccountAndTenant({
       email: body.email,
       password: body.password,
@@ -116,11 +123,14 @@ export async function POST(request: NextRequest) {
     });
 
     try {
+      stage = 'discord:resolve-app';
       if (signupResult.tenant.discordBotToken) {
         const resolvedDiscord = await resolveDiscordApplicationFromBotToken(signupResult.tenant.discordBotToken);
         if (resolvedDiscord.applicationId || resolvedDiscord.publicKey) {
-          signupResult.tenant.discordApplicationId = resolvedDiscord.applicationId || signupResult.tenant.discordApplicationId;
+          signupResult.tenant.discordApplicationId =
+            resolvedDiscord.applicationId || signupResult.tenant.discordApplicationId;
           signupResult.tenant.discordPublicKey = resolvedDiscord.publicKey || signupResult.tenant.discordPublicKey;
+          stage = 'tenant:update-discord';
           await upsertTenantProfile(signupResult.tenant);
         }
       }
@@ -134,8 +144,11 @@ export async function POST(request: NextRequest) {
     let testResult: Awaited<ReturnType<typeof testWebhook>> | null = null;
 
     try {
+      stage = 'workflow:publish';
       publishedWorkflow = await publishTenantWorkflow(signupResult.account.tenantId);
+      stage = 'discord:register-commands';
       await registerDiscordSlashCommands(signupResult.tenant);
+      stage = 'webhook:test';
       testResult = await testWebhook({
         ...signupResult.tenant,
         webhookUrl,
@@ -167,24 +180,25 @@ export async function POST(request: NextRequest) {
         test: testResult?.data || null,
         warnings:
           testResult && !testResult.ok
-            ? ['Conta criada, mas o teste do webhook falhou. Você ainda pode fazer login e revisar as integrações.']
+            ? ['Conta criada, mas o teste do webhook falhou. Voce ainda pode fazer login e revisar as integracoes.']
             : [],
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
-    if (error instanceof Error && error.message.includes('Já existe uma conta com esse e-mail.')) {
+    if (error instanceof Error && error.message.includes('Ja existe uma conta com esse e-mail.')) {
       return NextResponse.json(
         {
           ok: false,
           code: 'EMAIL_EXISTS',
-          error: 'Esse e-mail já está cadastrado. Faça login para continuar.',
+          error: 'Esse e-mail ja esta cadastrado. Faca login para continuar.',
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
     const message = error instanceof Error ? error.message : 'Erro desconhecido ao criar conta.';
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error('Signup failed at stage:', stage, error);
+    return NextResponse.json({ ok: false, error: message, stage }, { status: 500 });
   }
 }
