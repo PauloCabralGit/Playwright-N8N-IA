@@ -1,13 +1,10 @@
 import { createHash, randomBytes, randomUUID, pbkdf2Sync, timingSafeEqual } from 'crypto';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
 import type { NextRequest } from 'next/server';
 import type { N8nSettings } from '@/components/dashboard/types';
 import { dbQuery, dbTransaction } from '@/app/lib/postgres';
+import workflowTemplate from '@/updated_flow.json';
 
 export const SESSION_COOKIE_NAME = 'qa_session';
-
-const WORKFLOW_TEMPLATE_FILE = resolve(process.cwd(), 'updated_flow.json');
 
 export type TenantAccount = {
   id: string;
@@ -248,7 +245,7 @@ function mapAccount(row: Record<string, unknown> | null | undefined): TenantAcco
 }
 
 function readWorkflowTemplate() {
-  return JSON.parse(readFileSync(WORKFLOW_TEMPLATE_FILE, 'utf8')) as {
+  return structuredClone(workflowTemplate) as {
     nodes: Array<{ name: string; parameters?: Record<string, unknown> }>;
     connections: Record<string, unknown>;
     [key: string]: unknown;
