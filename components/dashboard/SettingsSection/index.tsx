@@ -16,6 +16,7 @@ type SettingsSectionProps = {
   tenantId?: string;
   tenantMissing?: boolean;
   onN8nSettingsSave?: (settings: N8nSettings) => void;
+  onN8nSettingsChange?: (settings: N8nSettings) => void;
   onN8nConnectionTestResult?: (ok: boolean, message: string) => void;
 };
 
@@ -114,7 +115,7 @@ function mergeSettings(primary?: Partial<N8nSettings> | null, fallback?: Partial
   });
 }
 
-export function SettingsSection({ settings, toggleSetting, n8nSettings, tenantData, tenantId, tenantMissing, onN8nSettingsSave, onN8nConnectionTestResult }: SettingsSectionProps) {
+export function SettingsSection({ settings, toggleSetting, n8nSettings, tenantData, tenantId, tenantMissing, onN8nSettingsSave, onN8nSettingsChange, onN8nConnectionTestResult }: SettingsSectionProps) {
   const [n8nForm, setN8nForm] = useState<N8nSettings>(() => mergeSettings(n8nSettings, tenantData));
   const [n8nSaveStatus, setN8nSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [n8nTestStatus, setN8nTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
@@ -270,7 +271,11 @@ export function SettingsSection({ settings, toggleSetting, n8nSettings, tenantDa
   }, [reloadN8nConfig]);
 
   const updateN8nForm = (patch: Partial<N8nSettings>) => {
-    setN8nForm((prev) => ({ ...prev, ...patch }));
+    setN8nForm((prev) => {
+      const next = { ...prev, ...patch };
+      onN8nSettingsChange?.(next);
+      return next;
+    });
   };
 
   const handleN8nSave = async () => {

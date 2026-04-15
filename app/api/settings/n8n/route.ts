@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
 
     const issues = validateSettings(mergedConfig);
 
-    const githubIssues = [];
+    const githubIssues: string[] = [];
 
     if (issues.length > 0 || githubIssues.length > 0) {
       return NextResponse.json(
