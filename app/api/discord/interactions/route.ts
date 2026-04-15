@@ -24,9 +24,9 @@ function pickDiscordContent(payload: Record<string, unknown> | null, status: num
   }
 
   const content =
-    typeof payload.content === 'string' ? payload.content.trim() : '' ||
-    typeof payload.message === 'string' ? payload.message.trim() : '' ||
-    typeof payload.error === 'string' ? payload.error.trim() : '';
+    (typeof payload.content === 'string' ? payload.content.trim() : '') ||
+    (typeof payload.message === 'string' ? payload.message.trim() : '') ||
+    (typeof payload.error === 'string' ? payload.error.trim() : '');
 
   if (content) {
     return content;
