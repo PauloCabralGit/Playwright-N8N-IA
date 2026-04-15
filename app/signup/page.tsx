@@ -18,5 +18,5 @@ export default function SignupPage() {
       .catch(() => {});
   }, [router]);
 
-  return <AuthScreen initialMode="signup" onAuthenticated={() => router.replace('/')} showModeSwitch />;
+  return <AuthScreen initialMode="signup" onAuthenticated={() => router.replace('/login?registered=1')} showModeSwitch />;
 }

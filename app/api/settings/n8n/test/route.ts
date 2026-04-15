@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { N8nSettings } from '@/components/dashboard/types';
+import { buildTenantWebhookUrl } from '@/app/lib/tenant-auth';
 
 type TestRequestBody = {
   settings?: Partial<N8nSettings>;
+  tenantId?: string;
+  tenantSlug?: string;
 };
 
 function isValidUrl(value: string | undefined): value is string {
@@ -20,7 +23,7 @@ function validateSettings(settings: Partial<N8nSettings>) {
 
   const requiredFields: { key: keyof N8nSettings; label: string }[] = [
     { key: 'appPublicUrl', label: 'URL pública do app' },
-    { key: 'webhookUrl', label: 'Webhook URL do n8n' },
+    { key: 'webhookBaseUrl', label: 'Base URL do webhook' },
     { key: 'apiKey', label: 'API Key do n8n' },
     { key: 'githubOwner', label: 'GitHub Owner' },
     { key: 'githubRepo', label: 'GitHub Repo' },
@@ -40,12 +43,8 @@ function validateSettings(settings: Partial<N8nSettings>) {
       continue;
     }
 
-    if (field.key === 'webhookUrl' && !isValidUrl(value)) {
+    if ((field.key === 'appPublicUrl' || field.key === 'webhookBaseUrl') && !isValidUrl(value)) {
       issues.push(`${field.label} está com URL inválida`);
-    }
-
-    if (field.key === 'discordWebhook' && value && !/^https:\/\/(canary\.|ptb\.)?discord\.com\/api\/webhooks\/[^/]+\/[^/]+$/i.test(value)) {
-      issues.push(`${field.label} está com formato inválido`);
     }
 
     if (field.key === 'apiKey' && !/^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/.test(value)) {
@@ -55,6 +54,11 @@ function validateSettings(settings: Partial<N8nSettings>) {
     if (field.key === 'githubToken' && !/^(ghp_|github_pat_)/i.test(value)) {
       issues.push(`${field.label} está com formato inválido`);
     }
+  }
+
+  const discordWebhook = String(settings.discordWebhook || '').trim();
+  if (discordWebhook && !/^https:\/\/(canary\.|ptb\.)?discord\.com\/api\/webhooks\/[^/]+\/[^/]+$/i.test(discordWebhook)) {
+    issues.push('Discord Webhook está com formato inválido');
   }
 
   return issues;
@@ -101,7 +105,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const webhookUrl = String(settings.webhookUrl || '').trim();
+    const webhookBaseUrl = String(settings.webhookBaseUrl || '').trim();
+    const webhookUrl = String(settings.webhookUrl || '').trim() || buildTenantWebhookUrl(webhookBaseUrl);
 
     const response = await fetch(webhookUrl, {
       method: 'POST',
@@ -111,7 +116,9 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         type: 'n8n_connection_test',
         settings,
-        source: 'qa-platform',
+        tenantId: body.tenantId || settings.tenantId || '',
+        tenantSlug: body.tenantSlug || settings.tenantSlug || '',
+        source: 'site',
         timestamp: new Date().toISOString(),
       }),
       cache: 'no-store',

@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
+import { getN8nConfig } from '@/app/lib/n8n-config';
 import { getCurrentTenant } from '@/app/lib/tenant-auth';
 import { moveBoardCard, upsertBoardCard } from '@/app/lib/board-store';
+import type { ColumnId, DeliveryCard } from '@/components/dashboard/types';
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -73,11 +75,11 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (body.card && typeof body.card === "object") {
-      await upsertBoardCard(tenant.id, body.card as any);
+      await upsertBoardCard(tenant.id, body.card as DeliveryCard);
     }
 
     if ((body.action || '').toLowerCase() === 'move') {
-      await moveBoardCard(tenant.id, body.id, body.status as any);
+      await moveBoardCard(tenant.id, body.id, body.status as ColumnId);
     }
 
     const webhookUrl = body.configSnapshot?.webhookUrl?.trim() || "";
@@ -86,7 +88,14 @@ export async function PATCH(request: NextRequest) {
       return json({ error: "Webhook URL inválida ou ausente no payload atual." }, 400);
     }
 
-    const n8nResult = await callN8n(webhookUrl, body);
+    const discordWebhook = (await getN8nConfig(request, tenant.id)).discordWebhook || '';
+    const n8nResult = await callN8n(webhookUrl, {
+      ...body,
+      tenantId: tenant.id,
+      tenantSlug: tenant.slug,
+      discordWebhook,
+      source: 'site',
+    });
 
     return json({ ok: true, n8n: n8nResult });
   } catch (error) {

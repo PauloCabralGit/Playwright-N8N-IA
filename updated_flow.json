@@ -1,43 +1,10 @@
 {
-  "name": "QA Discord + Google Sheets - Final + IA",
+  "name": "QA Discord + Banco de Dados - Final + IA",
   "nodes": [
     {
       "parameters": {
-        "httpMethod": "POST",
-        "path": "discord-qa",
-        "options": {}
-      },
-      "id": "4099ac34-fe7e-4e57-8565-1ed6b20b7ea3",
-      "name": "Webhook Discord",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        22976,
-        20272
-      ],
-      "webhookId": "783725c9-2169-4f37-8fdc-e9ca887cdb72"
-    },
-    {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "qa-platform/healthcheck",
-        "responseMode": "lastNode",
-        "options": {}
-      },
-      "id": "healthcheck-webhook",
-      "name": "Webhook Healthcheck",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        22976,
-        20448
-      ],
-      "webhookId": "healthcheck-webhook"
-    },
-    {
-      "parameters": {
         "method": "GET",
-        "url": "https://mathilde-obcuneate-allusively.ngrok-free.dev/api/settings/n8n/config",
+        "url": "={{ 'https://mathilde-obcuneate-allusively.ngrok-free.dev/api/settings/n8n/config?tenant=' + encodeURIComponent($json.tenantId || $json.tenantSlug || '') }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -64,7 +31,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const config = $json || {};\n\nconst pickWebhook = () => {\n  const candidates = [\n    'Webhook Discord1',\n    'Webhook Next Status',\n    'Webhook Next Created',\n    'Webhook Discord',\n  ];\n\n  for (const name of candidates) {\n    try {\n      const value = $(name).first().json;\n      if (value && Object.keys(value).length > 0) return value;\n    } catch (e) {}\n  }\n\n  return {};\n};\n\nconst root = pickWebhook();\nconst body = root.body || {};\nconst options = body.options || {};\nconst scenario = root.scenario || body.scenario || {};\nconst card = root.card || body.card || {};\nconst acceptanceCriteria = Array.isArray(body.acceptanceCriteria)\n  ? body.acceptanceCriteria\n  : Array.isArray(card.acceptanceCriteria)\n    ? card.acceptanceCriteria\n    : [];\nconst scenarios = Array.isArray(body.scenarios)\n  ? body.scenarios\n  : Array.isArray(card.scenarios)\n    ? card.scenarios\n    : [];\nconst actionFromApi = root.action || body.action || body.command || root.command || '';\n\nconst inferredAction =\n  actionFromApi ||\n  (Array.isArray(body.scenarios) && body.scenarios.length ? 'create' : '') ||\n  (body.scenario ? 'create' : '') ||\n  (root.source === 'IA' && (body.id || root.id || scenario.id || card.title) ? 'create' : '') ||\n  'unknown';\n\nconst command = body.command || root.command || inferredAction || 'unknown';\n\nconst map = {\n  qa_buscar: 'buscar',\n  qa_ver: 'ver',\n  qa_add: 'adicionar',\n  qa_editar: 'editar',\n  qa_status: 'status',\n  qa_del: 'deletar',\n  qa_ia: 'ia',\n  pingqa: 'pingqa',\n  create: 'adicionar',\n  move: 'status',\n  update: 'status',\n  create_scenario: 'adicionar',\n  scenario_created: 'adicionar',\n  update_status: 'status',\n};\n\nconst appId = root.application_id || body.application_id || body.body?.application_id || '';\nconst interactionToken = root.interaction_token || body.interaction_token || body.token || body.body?.token || '';\nconst interactionId = root.interaction_id || body.interaction_id || body.id || body.body?.id || '';\nconst userValue = scenario.owner || body.user || root.user || 'api';\n\nconst inferredSheet =\n  options.aba ||\n  root.sheet ||\n  body.sheet ||\n  ((options.id || scenario.id || card.title || '').toUpperCase().startsWith('CT-PERF')\n    ? (config.googleSheetsPerformanceTab || 'Testes Performance')\n    : (config.googleSheetsFunctionalTab || 'Testes Funcionais'));\n\nreturn [{\n  json: {\n    ...root,\n    card,\n    acceptanceCriteria,\n    scenarios,\n    config,\n    action: map[command] || 'unknown',\n    text: options.texto || options.pergunta || root.text || card.businessGoal || '',\n    id: options.id || scenario.id || root.id || body.id || card.id || '',\n    status: options.status || root.status || body.status || scenario.status || card.status || '',\n    field: options.campo || root.field || '',\n    value: options.valor || root.value || '',\n    sheet: inferredSheet,\n    categoria: scenario.category || root.categoria || body.category || card.source || '',\n    modulo: scenario.module || root.modulo || body.module || card.module || '',\n    titulo: scenario.title || root.titulo || body.title || card.title || '',\n    objetivo: scenario.objective || root.objetivo || body.businessGoal || card.businessGoal || '',\n    precondicao: scenario.preconditions || root.precondicao || body.precondicao || card.qaNotes || '',\n    passos: scenario.steps || root.passos || body.passos || '',\n    resultado: scenario.expectedResult || root.resultado || body.resultado || acceptanceCriteria.join('\\n') || '',\n    tags: Array.isArray(scenario.tags) ? scenario.tags.join(', ') : (scenario.tags || root.tags || body.tags || card.source || ''),\n    prioridade: scenario.priority || root.prioridade || body.priority || card.priority || '',\n    user: userValue,\n    application_id: appId,\n    interaction_token: interactionToken,\n    interaction_id: interactionId,\n    responseTarget: appId && interactionToken ? 'discord' : 'api',\n  }\n}];"
+        "jsCode": "\nconst config = $json || {};\n\nconst pickWebhook = () => {\n  const candidates = [\n    'Webhook Discord',\n    'Webhook',\n    'Webhook Next Status',\n    'Webhook Next Created',\n  ];\n\n  for (const name of candidates) {\n    try {\n      const value = $(name).first().json;\n      if (value && Object.keys(value).length > 0) return value;\n    } catch (e) {}\n  }\n\n  return {};\n};\n\nconst root = pickWebhook();\nconst body = root.body || {};\nconst options = body.options || {};\nconst scenario = root.scenario || body.scenario || {};\nconst card = root.card || body.card || {};\nconst acceptanceCriteria = Array.isArray(body.acceptanceCriteria)\n  ? body.acceptanceCriteria\n  : Array.isArray(card.acceptanceCriteria)\n    ? card.acceptanceCriteria\n    : [];\nconst scenarios = Array.isArray(body.scenarios)\n  ? body.scenarios\n  : Array.isArray(card.scenarios)\n    ? card.scenarios\n    : [];\nconst actionFromApi = root.action || body.action || body.command || root.command || '';\n\nconst inferredAction =\n  actionFromApi ||\n  (Array.isArray(body.scenarios) && body.scenarios.length ? 'create' : '') ||\n  (body.scenario ? 'create' : '') ||\n  (root.source === 'IA' && (body.id || root.id || scenario.id || card.title) ? 'create' : '') ||\n  'unknown';\n\nconst command = body.command || root.command || inferredAction || 'unknown';\n\nconst map = {\n  qa_buscar: 'buscar',\n  qa_ver: 'ver',\n  qa_add: 'adicionar',\n  qa_editar: 'editar',\n  qa_status: 'status',\n  qa_del: 'deletar',\n  qa_ia: 'ia',\n  pingqa: 'pingqa',\n  n8n_connection_test: 'pingqa',\n  create: 'adicionar',\n  move: 'status',\n  update: 'status',\n  create_scenario: 'adicionar',\n  scenario_created: 'adicionar',\n  update_status: 'status',\n};\n\nconst appId = root.application_id || body.application_id || body.body?.application_id || '';\nconst interactionToken = root.interaction_token || body.interaction_token || body.token || body.body?.token || '';\nconst interactionId = root.interaction_id || body.interaction_id || body.id || body.body?.id || '';\nconst discordSignals = Boolean(\n  root.source === 'discord' ||\n  body.source === 'discord' ||\n  root.application_id ||\n  body.application_id ||\n  body.body?.application_id ||\n  root.interaction_token ||\n  body.interaction_token ||\n  body.token ||\n  body.body?.token ||\n  root.guild_id ||\n  body.guild_id ||\n  body.body?.guild_id ||\n  root.channel_id ||\n  body.channel_id ||\n  body.body?.channel_id ||\n  body.type === 2 ||\n  body.type === 3 ||\n  root.type === 2 ||\n  root.type === 3 ||\n  body.interaction?.id ||\n  body.member ||\n  body.user?.id\n);\nconst incomingSource = String(root.source || body.source || (discordSignals ? 'discord' : 'site')).trim().toLowerCase() || 'site';\nconst userValue = scenario.owner || body.user || root.user || 'api';\n\nconst inferredGroup =\n  String(options.grupo || body.group || root.group || (\n    (options.id || scenario.id || card.title || '').toUpperCase().startsWith('CT-PERF')\n      ? 'Performance'\n      : 'Funcional'\n  )).trim() || 'Funcional';\n\nreturn [{\n  json: {\n    ...root,\n    card,\n    acceptanceCriteria,\n    scenarios,\n    config,\n    action: map[command] || 'unknown',\n    source: incomingSource,\n    origin: incomingSource,\n    text: options.texto || options.pergunta || root.text || card.businessGoal || '',\n    id: options.id || scenario.id || root.id || body.id || card.id || '',\n    status: options.status || root.status || body.status || scenario.status || card.status || '',\n    field: options.campo || root.field || '',\n    value: options.valor || root.value || '',\n    grupo: inferredGroup,\n    categoria: scenario.category || root.categoria || body.category || card.source || '',\n    modulo: scenario.module || root.modulo || body.module || card.module || '',\n    titulo: scenario.title || root.titulo || body.title || card.title || '',\n    objetivo: scenario.objective || root.objetivo || body.businessGoal || card.businessGoal || '',\n    precondicao: scenario.preconditions || root.precondicao || body.precondicao || card.qaNotes || '',\n    passos: scenario.steps || root.passos || body.passos || '',\n    resultado: scenario.expectedResult || root.resultado || body.resultado || acceptanceCriteria.join('\\n') || '',\n    tags: Array.isArray(scenario.tags) ? scenario.tags.join(', ') : (scenario.tags || root.tags || body.tags || card.source || ''),\n    prioridade: scenario.priority || root.prioridade || body.priority || card.priority || '',\n    user: userValue,\n    application_id: appId,\n    interaction_token: interactionToken,\n    interaction_id: interactionId,\n    responseTarget: incomingSource === 'discord' ? 'discord' : 'api',\n  }\n}];\n"
       },
       "id": "a8cab905-d524-43a5-8b2e-a53f6c7bf41f",
       "name": "Normalizar Payload",
@@ -73,19 +40,6 @@
       "position": [
         23200,
         20272
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const root = $json || {};\nconst body = root.body || root;\nconst settings = body.settings || body.configSnapshot || body;\n\nconst isValidUrl = (value) => {\n  if (typeof value !== 'string') return false;\n  try {\n    new URL(value.trim());\n    return true;\n  } catch {\n    return false;\n  }\n};\n\nconst issues = [];\nconst requiredFields = [\n  ['appPublicUrl', 'URL pública do app'],\n  ['webhookUrl', 'Webhook URL do n8n'],\n  ['apiKey', 'API Key do n8n'],\n  ['googleSheetsId', 'Google Sheets ID'],\n  ['googleSheetsFunctionalTab', 'Aba Testes Funcionais'],\n  ['googleSheetsPerformanceTab', 'Aba Testes Performance'],\n  ['githubOwner', 'GitHub Owner'],\n  ['githubRepo', 'GitHub Repo'],\n  ['githubBranch', 'GitHub Branch'],\n  ['githubToken', 'GitHub Token'],\n];\n\nfor (const [key, label] of requiredFields) {\n  const value = String(settings?.[key] || '').trim();\n  if (!value) {\n    issues.push(`${label} está vazio`);\n    continue;\n  }\n\n  if ((key === 'appPublicUrl' || key === 'webhookUrl') && !isValidUrl(value)) {\n    issues.push(`${label} está com URL inválida`);\n    continue;\n  }\n\n  if (key === 'webhookUrl' && !/\\/webhook(?:-test)?(\\/|$)/i.test(value)) {\n    issues.push(`${label} está com URL inválida`);\n    continue;\n  }\n\n  if (key === 'googleSheetsId' && !/^[a-zA-Z0-9_-]{25,}$/.test(value)) {\n    issues.push(`${label} está com formato inválido`);\n    continue;\n  }\n\n  if (key === 'githubToken' && !/^(ghp_|github_pat_)/i.test(value)) {\n    issues.push(`${label} está com formato inválido`);\n    continue;\n  }\n}\n\nif (String(settings?.discordWebhook || '').trim() && !/^https:\\/\\/(canary\\.|ptb\\.)?discord\\.com\\/api\\/webhooks\\/[^/]+\\/[^/]+$/i.test(String(settings.discordWebhook).trim())) {\n  issues.push('Discord Webhook está com formato inválido');\n}\n\nif (issues.length > 0) {\n  return [{ json: { ok: false, error: 'Configurações inválidas.', issues } }];\n}\n\nreturn [{ json: { ok: true, message: 'n8n healthcheck ok' } }];"
-      },
-      "id": "healthcheck-response",
-      "name": "Healthcheck Response",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        23100,
-        20448
       ]
     },
     {
@@ -296,32 +250,16 @@
     },
     {
       "parameters": {
-        "documentId": {
-          "__rl": true,
-          "value": "={{ $json.config?.googleSheetsId || $json.config?.GOOGLE_SHEETS_ID || $json.GOOGLE_SHEETS_ID || \"1fHuX726h579bXDUq5du8lxQxerH2pztu2eA7HoP-nyo\" }}",
-          "mode": "id"
-        },
-        "sheetName": {
-          "__rl": true,
-          "mode": "name",
-          "value": "={{$json.sheet}}"
-        },
-        "options": {}
+        "jsCode": "\nconst config = $json.config || {};\nconst baseUrl = String(config.appPublicUrl || config.APP_PUBLIC_URL || '').trim().replace(/\\/+$/, '');\nconst tenantId = String(config.tenantId || $json.tenantId || $json.tenantSlug || '').trim();\n\nif (!baseUrl) {\n  throw new Error('URL publica do app nao encontrada na configuracao.');\n}\n\nconst response = await fetch(\n  baseUrl + '/api/n8n/board/cards?tenantId=' + encodeURIComponent(tenantId),\n  {\n    headers: { 'content-type': 'application/json' },\n    cache: 'no-store',\n  }\n);\n\nconst data = await response.json().catch(() => ({}));\nif (!response.ok || !data?.ok) {\n  throw new Error(data?.error || 'Falha ao carregar cenarios do banco (' + response.status + ').');\n}\n\nconst cards = Array.isArray(data.items) ? data.items : [];\n\nfunction toRow(card) {\n  const acceptanceCriteria = Array.isArray(card.acceptanceCriteria) ? card.acceptanceCriteria : [];\n  const scenarios = Array.isArray(card.scenarios) ? card.scenarios : [];\n  const isPerformance =\n    card.column === 'testing' ||\n    /perf/i.test(String(card.id || '')) ||\n    /performance/i.test(String(card.module || '')) ||\n    /performance/i.test(String(card.title || ''));\n\n  const group = isPerformance ? 'Performance' : 'Funcional';\n\n  return {\n    _group: group,\n    grupo: group,\n    ID: card.id || '',\n    Categoria: group,\n    'Módulo': card.module || card.epic || 'Geral',\n    'Título': card.title || card.id || '',\n    Objetivo: card.businessGoal || '',\n    'Pré-condição / Cenário': card.qaNotes || '',\n    Passos: acceptanceCriteria.join('\\n'),\n    'Resultado Esperado': acceptanceCriteria.join('\\n'),\n    Status: card.column || 'Backlog',\n    Tags: scenarios.map((scenario) => scenario.id).filter(Boolean).join(', '),\n    card,\n    scenarios,\n  };\n}\n\nreturn cards.map((card) => ({ json: toRow(card) }));\n"
       },
       "id": "186111a9-10c8-4ba1-a716-32b69ad4f4d8",
-      "name": "GS Ler Linhas",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.7,
+      "name": "DB Ler Cenários",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         24080,
         19792
-      ],
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "36mCFMfO8zf5LClo",
-          "name": "Google Sheets OAuth2 API"
-        }
-      }
+      ]
     },
     {
       "parameters": {
@@ -351,59 +289,39 @@
     },
     {
       "parameters": {
-        "operation": "append",
-        "documentId": {
-          "__rl": true,
-          "value": "={{ $json.config?.googleSheetsId || $json.config?.GOOGLE_SHEETS_ID || $json.GOOGLE_SHEETS_ID || \"1fHuX726h579bXDUq5du8lxQxerH2pztu2eA7HoP-nyo\" }}",
-          "mode": "id"
+        "method": "POST",
+        "url": "={{ ($json.config?.appPublicUrl || $json.config?.APP_PUBLIC_URL || '').replace(/\\/+$/, '') + '/api/n8n/board/cards' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
         },
-        "sheetName": {
-          "__rl": true,
-          "mode": "name",
-          "value": "={{$json.sheet}}"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "ID": "={{$json.id}}",
-            "Categoria": "={{$json.categoria || 'Funcional'}}",
-            "MÃ³dulo": "={{$json.modulo || ''}}",
-            "TÃ­tulo": "={{$json.titulo || ''}}",
-            "Objetivo": "={{$json.objetivo || ''}}",
-            "PrÃ©-condiÃ§Ã£o / CenÃ¡rio": "=",
-            "Passos": "={{$json.passos || ''}}",
-            "Resultado Esperado": "={{$json.resultado || ''}}",
-            "MÃ©tricas / SLA": "-",
-            "Prioridade": "={{$json.prioridade || 'MÃ©dia'}}",
-            "Status": "Nao Executado",
-            "Tags": "={{$json.tags || ''}}",
-            "Atualizado Em": "={{$now}}",
-            "Atualizado Por": "={{$json.user || 'discord'}}",
-            "Ultima Acao": "adicionar"
-          },
-          "matchingColumns": [],
-          "schema": []
-        },
-        "options": {}
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { tenantId: $json.config?.tenantId || $json.tenantId || '', tenantSlug: $json.config?.tenantSlug || $json.tenantSlug || '', card: $json.card || { id: $json.id || '', title: $json.titulo || $json.title || '', module: $json.modulo || '', epic: $json.categoria || '', column: $json.status || 'qa', priority: $json.prioridade || 'M?dia', owner: $json.user || '', businessGoal: $json.objetivo || '', acceptanceCriteria: Array.isArray($json.acceptanceCriteria) ? $json.acceptanceCriteria : ($json.resultado ? String($json.resultado).split('\\n').filter(Boolean) : []), qaNotes: $json.precondicao || '', scenarios: Array.isArray($json.scenarios) ? $json.scenarios : [] } } }",
+        "options": {
+          "response": {
+            "neverError": true,
+            "responseFormat": "json"
+          }
+        }
       },
       "id": "430a8721-a502-4a20-8fd3-2c74eb9e7d4f",
-      "name": "GS Adicionar Cenario",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.7,
+      "name": "DB Criar Cenário",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
       "position": [
         24304,
         20224
-      ],
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "36mCFMfO8zf5LClo",
-          "name": "Google Sheets OAuth2 API"
-        }
-      }
+      ]
     },
     {
       "parameters": {
-        "jsCode": "let cmd = null;\n\ntry { cmd = $(\"Normalizar Payload1\").first().json; } catch {}\nif (!cmd) { try { cmd = $(\"Normalizar Payload\").first().json; } catch {} }\n\nconst featurePath = $json.featurePath || \"\";\nconst commitUrl = $json.commitUrl || \"\";\n\nreturn [{\n  json: {\n    content: `CenÃ¡rio ${cmd?.id || \"sem ID\"} adicionado com sucesso e sincronizado no GitHub.\\nArquivo: ${featurePath}${commitUrl ? `\\nCommit: ${commitUrl}` : \"\"}`,\n    ok: true,\n    id: cmd?.id || \"\",\n    featurePath,\n    commitUrl,\n    responseTarget: cmd?.responseTarget || \"api\",\n    application_id: cmd?.application_id || \"\",\n    interaction_token: cmd?.interaction_token || \"\"\n  }\n}];"
+        "jsCode": "let cmd = null;\n\ntry { cmd = $(\"Normalizar Payload\").first().json; } catch {}\nif (!cmd) { try { cmd = $(\"Normalizar Payload\").first().json; } catch {} }\n\nconst featurePath = $json.featurePath || \"\";\nconst commitUrl = $json.commitUrl || \"\";\n\nreturn [{\n  json: {\n    content: `CenÃ¡rio ${cmd?.id || \"sem ID\"} adicionado com sucesso e sincronizado no GitHub.\\nArquivo: ${featurePath}${commitUrl ? `\\nCommit: ${commitUrl}` : \"\"}`,\n    ok: true,\n    id: cmd?.id || \"\",\n    featurePath,\n    commitUrl,\n    responseTarget: cmd?.responseTarget || \"api\",\n    application_id: cmd?.application_id || \"\",\n    interaction_token: cmd?.interaction_token || \"\"\n  }\n}];"
       },
       "id": "ec0c4daa-513a-4734-bab1-f927ddc72921",
       "name": "Confirmar AdiÃ§Ã£o",
@@ -416,36 +334,20 @@
     },
     {
       "parameters": {
-        "documentId": {
-          "__rl": true,
-          "value": "={{ $json.config?.googleSheetsId || $json.config?.GOOGLE_SHEETS_ID || $json.GOOGLE_SHEETS_ID || \"1fHuX726h579bXDUq5du8lxQxerH2pztu2eA7HoP-nyo\" }}",
-          "mode": "id"
-        },
-        "sheetName": {
-          "__rl": true,
-          "mode": "name",
-          "value": "={{$json.sheet}}"
-        },
-        "options": {}
+        "jsCode": "\nconst config = $json.config || {};\nconst baseUrl = String(config.appPublicUrl || config.APP_PUBLIC_URL || '').trim().replace(/\\/+$/, '');\nconst tenantId = String(config.tenantId || $json.tenantId || $json.tenantSlug || '').trim();\n\nif (!baseUrl) {\n  throw new Error('URL publica do app nao encontrada na configuracao.');\n}\n\nconst response = await fetch(\n  baseUrl + '/api/n8n/board/cards?tenantId=' + encodeURIComponent(tenantId),\n  {\n    headers: { 'content-type': 'application/json' },\n    cache: 'no-store',\n  }\n);\n\nconst data = await response.json().catch(() => ({}));\nif (!response.ok || !data?.ok) {\n  throw new Error(data?.error || 'Falha ao carregar cenarios do banco (' + response.status + ').');\n}\n\nconst cards = Array.isArray(data.items) ? data.items : [];\n\nfunction toRow(card) {\n  const acceptanceCriteria = Array.isArray(card.acceptanceCriteria) ? card.acceptanceCriteria : [];\n  const scenarios = Array.isArray(card.scenarios) ? card.scenarios : [];\n  const isPerformance =\n    card.column === 'testing' ||\n    /perf/i.test(String(card.id || '')) ||\n    /performance/i.test(String(card.module || '')) ||\n    /performance/i.test(String(card.title || ''));\n\n  const group = isPerformance ? 'Performance' : 'Funcional';\n\n  return {\n    _group: group,\n    grupo: group,\n    ID: card.id || '',\n    Categoria: group,\n    'Módulo': card.module || card.epic || 'Geral',\n    'Título': card.title || card.id || '',\n    Objetivo: card.businessGoal || '',\n    'Pré-condição / Cenário': card.qaNotes || '',\n    Passos: acceptanceCriteria.join('\\n'),\n    'Resultado Esperado': acceptanceCriteria.join('\\n'),\n    Status: card.column || 'Backlog',\n    Tags: scenarios.map((scenario) => scenario.id).filter(Boolean).join(', '),\n    card,\n    scenarios,\n  };\n}\n\nreturn cards.map((card) => ({ json: toRow(card) }));\n"
       },
       "id": "a46ce9f4-0e7b-4fc0-bd84-e46bb1ede9eb",
-      "name": "GS Ler para Status",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.7,
+      "name": "DB Ler para Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         23856,
         20416
-      ],
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "36mCFMfO8zf5LClo",
-          "name": "Google Sheets OAuth2 API"
-        }
-      }
+      ]
     },
     {
       "parameters": {
-        "jsCode": "let cmd = null;\ntry { cmd = $(\"Normalizar Payload1\").first().json; } catch {}\nif (!cmd) { try { cmd = $(\"Normalizar Payload\").first().json; } catch {} }\n\nconst rows = $input.all().map(i => i.json);\nconst item = rows.find(r => (r.ID || \"\").toLowerCase() === (cmd.id || \"\").toLowerCase());\n\nif (!item) {\n  return [{ json: { content: `CenÃ¡rio ${cmd.id} nÃ£o encontrado.`, responseTarget: cmd.responseTarget, application_id: cmd.application_id || \"\", interaction_token: cmd.interaction_token || \"\" } }];\n}\n\nreturn [{\n  json: {\n    ...item,\n    ID: item.ID,\n    Status: cmd.status,\n    \"Atualizado Em\": new Date().toISOString(),\n    \"Atualizado Por\": cmd.user || \"discord\",\n    \"Ultima Acao\": \"status\",\n    sheet: cmd.sheet || \"Testes Funcionais\",\n    responseTarget: cmd.responseTarget || \"api\",\n    application_id: cmd.application_id || \"\",\n    interaction_token: cmd.interaction_token || \"\",\n    _ok: true\n  }\n}];"
+        "jsCode": "let cmd = null;\ntry { cmd = $(\"Normalizar Payload\").first().json; } catch {}\nif (!cmd) { try { cmd = $(\"Normalizar Payload\").first().json; } catch {} }\n\nconst rows = $input.all().map(i => i.json);\nconst item = rows.find(r => (r.ID || \"\").toLowerCase() === (cmd.id || \"\").toLowerCase());\n\nif (!item) {\n  return [{ json: { content: `CenÃ¡rio ${cmd.id} nÃ£o encontrado.`, responseTarget: cmd.responseTarget, application_id: cmd.application_id || \"\", interaction_token: cmd.interaction_token || \"\" } }];\n}\n\nreturn [{\n  json: {\n    ...item,\n    ID: item.ID,\n    Status: cmd.status,\n    \"Atualizado Em\": new Date().toISOString(),\n    \"Atualizado Por\": cmd.user || \"discord\",\n    \"Ultima Acao\": \"status\",\n    sheet: cmd.sheet || \"Funcionais\",\n    responseTarget: cmd.responseTarget || \"api\",\n    application_id: cmd.application_id || \"\",\n    interaction_token: cmd.interaction_token || \"\",\n    _ok: true\n  }\n}];"
       },
       "id": "ffd94520-f3aa-4329-a489-678eef890ca9",
       "name": "Preparar Status",
@@ -458,47 +360,39 @@
     },
     {
       "parameters": {
-        "operation": "update",
-        "documentId": {
-          "__rl": true,
-          "value": "={{ $json.config?.googleSheetsId || $json.config?.GOOGLE_SHEETS_ID || $json.GOOGLE_SHEETS_ID || \"1fHuX726h579bXDUq5du8lxQxerH2pztu2eA7HoP-nyo\" }}",
-          "mode": "id"
+        "method": "PATCH",
+        "url": "={{ ($json.config?.appPublicUrl || $json.config?.APP_PUBLIC_URL || '').replace(/\\/+$/, '') + '/api/n8n/board/cards' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
         },
-        "sheetName": {
-          "__rl": true,
-          "value": "={{ $json.sheet }}",
-          "mode": "name"
-        },
-        "columns": {
-          "mappingMode": "autoMapInputData",
-          "value": {},
-          "matchingColumns": [
-            "ID"
-          ],
-          "schema": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": true
-        },
-        "options": {}
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { tenantId: $json.config?.tenantId || $json.tenantId || '', tenantSlug: $json.config?.tenantSlug || $json.tenantSlug || '', id: $json.id || '', status: $json.status || $json.column || '', action: 'move' } }}",
+        "options": {
+          "response": {
+            "neverError": true,
+            "responseFormat": "json"
+          }
+        }
       },
       "id": "155bb197-60b6-4a63-907d-2512d55512df",
-      "name": "GS Atualizar Status",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.7,
+      "name": "DB Atualizar Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
       "position": [
         24304,
         20416
-      ],
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "36mCFMfO8zf5LClo",
-          "name": "Google Sheets OAuth2 API"
-        }
-      }
+      ]
     },
     {
       "parameters": {
-        "jsCode": "let cmd = null;\ntry { cmd = $(\"Normalizar Payload1\").first().json; } catch {}\nif (!cmd) { try { cmd = $(\"Normalizar Payload\").first().json; } catch {} }\n\nreturn [{\n  json: {\n    content: `Status do cenÃ¡rio ${cmd?.id || \"\"} alterado para ${cmd?.status || \"\"}.`,\n    ok: true,\n    id: cmd?.id || \"\",\n    responseTarget: cmd?.responseTarget || \"api\",\n    application_id: cmd?.application_id || \"\",\n    interaction_token: cmd?.interaction_token || \"\"\n  }\n}];"
+        "jsCode": "let cmd = null;\ntry { cmd = $(\"Normalizar Payload\").first().json; } catch {}\nif (!cmd) { try { cmd = $(\"Normalizar Payload\").first().json; } catch {} }\n\nreturn [{\n  json: {\n    content: `Status do cenÃ¡rio ${cmd?.id || \"\"} alterado para ${cmd?.status || \"\"}.`,\n    ok: true,\n    id: cmd?.id || \"\",\n    responseTarget: cmd?.responseTarget || \"api\",\n    application_id: cmd?.application_id || \"\",\n    interaction_token: cmd?.interaction_token || \"\"\n  }\n}];"
       },
       "id": "784a371c-697b-46dd-9e8a-fce2e94fc2f6",
       "name": "Confirmar Status",
@@ -511,32 +405,16 @@
     },
     {
       "parameters": {
-        "documentId": {
-          "__rl": true,
-          "value": "={{ $json.config?.googleSheetsId || $json.config?.GOOGLE_SHEETS_ID || $json.GOOGLE_SHEETS_ID || \"1fHuX726h579bXDUq5du8lxQxerH2pztu2eA7HoP-nyo\" }}",
-          "mode": "id"
-        },
-        "sheetName": {
-          "__rl": true,
-          "mode": "name",
-          "value": "={{$json.sheet}}"
-        },
-        "options": {}
+        "jsCode": "\nconst config = $json.config || {};\nconst baseUrl = String(config.appPublicUrl || config.APP_PUBLIC_URL || '').trim().replace(/\\/+$/, '');\nconst tenantId = String(config.tenantId || $json.tenantId || $json.tenantSlug || '').trim();\n\nif (!baseUrl) {\n  throw new Error('URL publica do app nao encontrada na configuracao.');\n}\n\nconst response = await fetch(\n  baseUrl + '/api/n8n/board/cards?tenantId=' + encodeURIComponent(tenantId),\n  {\n    headers: { 'content-type': 'application/json' },\n    cache: 'no-store',\n  }\n);\n\nconst data = await response.json().catch(() => ({}));\nif (!response.ok || !data?.ok) {\n  throw new Error(data?.error || 'Falha ao carregar cenarios do banco (' + response.status + ').');\n}\n\nconst cards = Array.isArray(data.items) ? data.items : [];\n\nfunction toRow(card) {\n  const acceptanceCriteria = Array.isArray(card.acceptanceCriteria) ? card.acceptanceCriteria : [];\n  const scenarios = Array.isArray(card.scenarios) ? card.scenarios : [];\n  const isPerformance =\n    card.column === 'testing' ||\n    /perf/i.test(String(card.id || '')) ||\n    /performance/i.test(String(card.module || '')) ||\n    /performance/i.test(String(card.title || ''));\n\n  const group = isPerformance ? 'Performance' : 'Funcional';\n\n  return {\n    _group: group,\n    grupo: group,\n    ID: card.id || '',\n    Categoria: group,\n    'Módulo': card.module || card.epic || 'Geral',\n    'Título': card.title || card.id || '',\n    Objetivo: card.businessGoal || '',\n    'Pré-condição / Cenário': card.qaNotes || '',\n    Passos: acceptanceCriteria.join('\\n'),\n    'Resultado Esperado': acceptanceCriteria.join('\\n'),\n    Status: card.column || 'Backlog',\n    Tags: scenarios.map((scenario) => scenario.id).filter(Boolean).join(', '),\n    card,\n    scenarios,\n  };\n}\n\nreturn cards.map((card) => ({ json: toRow(card) }));\n"
       },
       "id": "d7603ed2-ad05-4762-8bad-0a225f86e949",
-      "name": "GS Ler para Editar",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.7,
+      "name": "DB Ler para Editar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         23856,
         20608
-      ],
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "36mCFMfO8zf5LClo",
-          "name": "Google Sheets OAuth2 API"
-        }
-      }
+      ]
     },
     {
       "parameters": {
@@ -553,47 +431,39 @@
     },
     {
       "parameters": {
-        "operation": "update",
-        "documentId": {
-          "__rl": true,
-          "value": "={{ $json.config?.googleSheetsId || $json.config?.GOOGLE_SHEETS_ID || $json.GOOGLE_SHEETS_ID || \"1fHuX726h579bXDUq5du8lxQxerH2pztu2eA7HoP-nyo\" }}",
-          "mode": "id"
+        "method": "PATCH",
+        "url": "={{ ($json.config?.appPublicUrl || $json.config?.APP_PUBLIC_URL || '').replace(/\\/+$/, '') + '/api/n8n/board/cards' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
         },
-        "sheetName": {
-          "__rl": true,
-          "mode": "id",
-          "value": "={{$json.sheet}}"
-        },
-        "columns": {
-          "mappingMode": "autoMapInputData",
-          "value": {},
-          "matchingColumns": [
-            "ID"
-          ],
-          "schema": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": true
-        },
-        "options": {}
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { tenantId: $json.config?.tenantId || $json.tenantId || '', tenantSlug: $json.config?.tenantSlug || $json.tenantSlug || '', id: $json.id || '', field: $json.field || '', value: $json.value || '' } }}",
+        "options": {
+          "response": {
+            "neverError": true,
+            "responseFormat": "json"
+          }
+        }
       },
       "id": "b4e8e6a0-aadd-4b2f-ab4d-8ee49133f5a1",
       "name": "GS Atualizar EdiÃ§Ã£o",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.7,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
       "position": [
         24304,
         20608
-      ],
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "36mCFMfO8zf5LClo",
-          "name": "Google Sheets OAuth2 API"
-        }
-      }
+      ]
     },
     {
       "parameters": {
-        "jsCode": "let cmd = null;\ntry { cmd = $(\"Normalizar Payload1\").first().json; } catch {}\nif (!cmd) { try { cmd = $(\"Normalizar Payload\").first().json; } catch {} }\n\nreturn [{\n  json: {\n    content: `Campo ${cmd?.field || \"\"} do cenÃ¡rio ${cmd?.id || \"\"} atualizado.`,\n    ok: true,\n    responseTarget: cmd?.responseTarget || \"api\",\n    application_id: cmd?.application_id || \"\",\n    interaction_token: cmd?.interaction_token || \"\"\n  }\n}];"
+        "jsCode": "let cmd = null;\ntry { cmd = $(\"Normalizar Payload\").first().json; } catch {}\nif (!cmd) { try { cmd = $(\"Normalizar Payload\").first().json; } catch {} }\n\nreturn [{\n  json: {\n    content: `Campo ${cmd?.field || \"\"} do cenÃ¡rio ${cmd?.id || \"\"} atualizado.`,\n    ok: true,\n    responseTarget: cmd?.responseTarget || \"api\",\n    application_id: cmd?.application_id || \"\",\n    interaction_token: cmd?.interaction_token || \"\"\n  }\n}];"
       },
       "id": "cab4e68d-5eb1-4774-b8d7-c210d94785ce",
       "name": "Confirmar EdiÃ§Ã£o",
@@ -606,37 +476,39 @@
     },
     {
       "parameters": {
-        "operation": "delete",
-        "documentId": {
-          "__rl": true,
-          "value": "={{ $json.config?.googleSheetsId || $json.config?.GOOGLE_SHEETS_ID || $json.GOOGLE_SHEETS_ID || \"1fHuX726h579bXDUq5du8lxQxerH2pztu2eA7HoP-nyo\" }}",
-          "mode": "id"
+        "method": "DELETE",
+        "url": "={{ ($json.config?.appPublicUrl || $json.config?.APP_PUBLIC_URL || '').replace(/\\/+$/, '') + '/api/n8n/board/cards' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
         },
-        "sheetName": {
-          "__rl": true,
-          "value": "={{ $json.sheet }}",
-          "mode": "name"
-        },
-        "startIndex": "={{ $json.rowNumber }}"
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { tenantId: $json.config?.tenantId || $json.tenantId || '', tenantSlug: $json.config?.tenantSlug || $json.tenantSlug || '', id: $json.id || '' } }}",
+        "options": {
+          "response": {
+            "neverError": true,
+            "responseFormat": "json"
+          }
+        }
       },
       "id": "969dbb63-900d-496b-995e-1415db29e1ff",
       "name": "GS Deletar CenÃ¡rio",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.7,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
       "position": [
         24304,
         20800
-      ],
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "36mCFMfO8zf5LClo",
-          "name": "Google Sheets OAuth2 API"
-        }
-      }
+      ]
     },
     {
       "parameters": {
-        "jsCode": "let cmd = null;\ntry { cmd = $(\"Normalizar Payload1\").first().json; } catch {}\nif (!cmd) { try { cmd = $(\"Normalizar Payload\").first().json; } catch {} }\n\nif ($json.notFound) {\n  return [{ json: { content: $json.content, responseTarget: cmd?.responseTarget || \"api\", application_id: cmd?.application_id || \"\", interaction_token: cmd?.interaction_token || \"\" } }];\n}\n\nreturn [{\n  json: {\n    content: `CenÃ¡rio ${$json.ID} deletado com sucesso.`,\n    ok: true,\n    responseTarget: cmd?.responseTarget || \"api\",\n    application_id: cmd?.application_id || \"\",\n    interaction_token: cmd?.interaction_token || \"\"\n  }\n}];"
+        "jsCode": "let cmd = null;\ntry { cmd = $(\"Normalizar Payload\").first().json; } catch {}\nif (!cmd) { try { cmd = $(\"Normalizar Payload\").first().json; } catch {} }\n\nif ($json.notFound) {\n  return [{ json: { content: $json.content, responseTarget: cmd?.responseTarget || \"api\", application_id: cmd?.application_id || \"\", interaction_token: cmd?.interaction_token || \"\" } }];\n}\n\nreturn [{\n  json: {\n    content: `CenÃ¡rio ${$json.ID} deletado com sucesso.`,\n    ok: true,\n    responseTarget: cmd?.responseTarget || \"api\",\n    application_id: cmd?.application_id || \"\",\n    interaction_token: cmd?.interaction_token || \"\"\n  }\n}];"
       },
       "id": "24cd0ae0-ecd3-4b09-b16e-c32ccd4c74be",
       "name": "Confirmar DeleÃ§Ã£o",
@@ -732,7 +604,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const cmd = $items(\"Normalizar Payload\", 0, 0)[0].json;\nconst rows = $input.all().map(i => i.json);\nconst pergunta = (cmd.text || \"\").trim();\n\nconst availableSheets = [\"Testes Funcionais\", \"Testes Performance\"];\nconst lower = pergunta.toLowerCase();\n\n// tenta entender em quais abas o usuÃ¡rio quer perguntar\nlet selectedSheets = [];\nif (/funcional|funcionais/.test(lower)) selectedSheets.push(\"Testes Funcionais\");\nif (/performance|performace/.test(lower)) selectedSheets.push(\"Testes Performance\");\nif (selectedSheets.length === 0) selectedSheets = [...availableSheets];\n\nconst rowsInScope = rows.filter(r => selectedSheets.includes(r._sheet));\n\nconst asksForSheets = /(quais|listar|lista).*(abas|sheets)|quais\\s+abas|quais\\s+sheets/.test(lower);\n\nif (asksForSheets) {\n  const counts = availableSheets.map(sheet => {\n    const total = rows.filter(r => r._sheet === sheet).length;\n    return `- ${sheet}: ${total} cenÃ¡rio(s)`;\n  }).join(\"\\n\");\n\n  return [{\n    json: {\n      ...cmd,\n      content:\n        \"As abas disponÃ­veis sÃ£o:\\n\" +\n        \"- Testes Funcionais\\n\" +\n        \"- Testes Performance\\n\\n\" +\n        \"Contagem atual por aba:\\n\" + counts + \"\\n\\n\" +\n        \"VocÃª pode perguntar, por exemplo:\\n\" +\n        \"- 'Na aba Testes Funcionais, quantos cenÃ¡rios eu tenho?'\\n\" +\n        \"- 'Na aba Testes Performance, quais cenÃ¡rios existem?'\\n\" +\n        \"- 'Considerando todas as abas, quantos cenÃ¡rios eu tenho no total?'\"\n    }\n  }];\n}\n\nconst tokens = lower.split(/\\s+/).filter(Boolean);\nconst scored = rowsInScope.map(r => {\n  const text = [\n    r._sheet, r.ID, r.Categoria, r[\"MÃ³dulo\"], r[\"TÃ­tulo\"], r.Objetivo,\n    r[\"PrÃ©-condiÃ§Ã£o / CenÃ¡rio\"], r.Passos, r[\"Resultado Esperado\"],\n    r.Status, r.Tags\n  ].join(\" | \").toLowerCase();\n  const score = tokens.reduce((acc, t) => acc + (text.includes(t) ? 1 : 0), 0);\n  return { r, score };\n}).sort((a, b) => b.score - a.score);\n\nconst selected = scored.filter(x => x.score > 0).slice(0, 90).map(x => x.r);\nconst fallback = selected.length > 0 ? selected : rowsInScope.slice(0, 90);\n\nconst contexto = fallback.map((r, idx) => (\n`[CENÃRIO ${idx + 1}]\\n` +\n`ABA: ${r._sheet || \"\"}\\n` +\n`ID: ${r.ID || \"\"}\\n` +\n`Categoria: ${r.Categoria || \"\"}\\n` +\n`MÃ³dulo: ${r[\"MÃ³dulo\"] || \"\"}\\n` +\n`TÃ­tulo: ${r[\"TÃ­tulo\"] || \"\"}\\n` +\n`Objetivo: ${r.Objetivo || \"\"}\\n` +\n`PrÃ©-condiÃ§Ã£o / CenÃ¡rio: ${r[\"PrÃ©-condiÃ§Ã£o / CenÃ¡rio\"] || \"\"}\\n` +\n`Passos: ${r.Passos || \"\"}\\n` +\n`Resultado Esperado: ${r[\"Resultado Esperado\"] || \"\"}\\n` +\n`Status: ${r.Status || \"\"}\\n` +\n`Tags: ${r.Tags || \"\"}`\n)).join(\"\\n--------------------\\n\");\n\nconst countsBySheet = availableSheets.map(sheet => {\n  const total = rows.filter(r => r._sheet === sheet).length;\n  return `${sheet}: ${total}`;\n}).join(\" | \");\n\nconst userPrompt =\n`Abas disponÃ­veis: ${availableSheets.join(\", \")}\nAbas selecionadas para esta pergunta: ${selectedSheets.join(\", \")}\nContagem atual por aba: ${countsBySheet}\n\nPergunta do usuÃ¡rio: ${pergunta}\n\nResponda usando apenas os cenÃ¡rios do contexto abaixo.\nSe o usuÃ¡rio pedir total geral e nenhuma aba especÃ­fica foi mencionada, considere todas as abas.\nSempre informe, quando relevante, em qual aba estÃ¡ cada cenÃ¡rio.\n\nContexto de cenÃ¡rios:\n\n${contexto}`;\n\nreturn [{ json: { ...cmd, userPrompt, contextCount: fallback.length, selectedSheets, availableSheets } }];"
+        "jsCode": "const cmd = $items(\"Normalizar Payload\", 0, 0)[0].json;\nconst rows = $input.all().map(i => i.json);\nconst pergunta = (cmd.text || \"\").trim();\n\nconst availableSheets = [\"Funcionais\", \"Performance\"];\nconst lower = pergunta.toLowerCase();\n\n// tenta entender em quais abas o usuÃ¡rio quer perguntar\nlet selectedSheets = [];\nif (/funcional|funcionais/.test(lower)) selectedSheets.push(\"Funcionais\");\nif (/performance|performace/.test(lower)) selectedSheets.push(\"Performance\");\nif (selectedSheets.length === 0) selectedSheets = [...availableSheets];\n\nconst rowsInScope = rows.filter(r => selectedSheets.includes(r._sheet));\n\nconst asksForSheets = /(quais|listar|lista).*(abas|sheets)|quais\\s+abas|quais\\s+sheets/.test(lower);\n\nif (asksForSheets) {\n  const counts = availableSheets.map(sheet => {\n    const total = rows.filter(r => r._sheet === sheet).length;\n    return `- ${sheet}: ${total} cenÃ¡rio(s)`;\n  }).join(\"\\n\");\n\n  return [{\n    json: {\n      ...cmd,\n      content:\n        \"As abas disponÃ­veis sÃ£o:\\n\" +\n        \"- Funcionais\\n\" +\n        \"- Performance\\n\\n\" +\n        \"Contagem atual por aba:\\n\" + counts + \"\\n\\n\" +\n        \"VocÃª pode perguntar, por exemplo:\\n\" +\n        \"- 'Na aba Funcionais, quantos cenÃ¡rios eu tenho?'\\n\" +\n        \"- 'Na aba Performance, quais cenÃ¡rios existem?'\\n\" +\n        \"- 'Considerando todas as abas, quantos cenÃ¡rios eu tenho no total?'\"\n    }\n  }];\n}\n\nconst tokens = lower.split(/\\s+/).filter(Boolean);\nconst scored = rowsInScope.map(r => {\n  const text = [\n    r._sheet, r.ID, r.Categoria, r[\"MÃ³dulo\"], r[\"TÃ­tulo\"], r.Objetivo,\n    r[\"PrÃ©-condiÃ§Ã£o / CenÃ¡rio\"], r.Passos, r[\"Resultado Esperado\"],\n    r.Status, r.Tags\n  ].join(\" | \").toLowerCase();\n  const score = tokens.reduce((acc, t) => acc + (text.includes(t) ? 1 : 0), 0);\n  return { r, score };\n}).sort((a, b) => b.score - a.score);\n\nconst selected = scored.filter(x => x.score > 0).slice(0, 90).map(x => x.r);\nconst fallback = selected.length > 0 ? selected : rowsInScope.slice(0, 90);\n\nconst contexto = fallback.map((r, idx) => (\n`[CENÃRIO ${idx + 1}]\\n` +\n`ABA: ${r._sheet || \"\"}\\n` +\n`ID: ${r.ID || \"\"}\\n` +\n`Categoria: ${r.Categoria || \"\"}\\n` +\n`MÃ³dulo: ${r[\"MÃ³dulo\"] || \"\"}\\n` +\n`TÃ­tulo: ${r[\"TÃ­tulo\"] || \"\"}\\n` +\n`Objetivo: ${r.Objetivo || \"\"}\\n` +\n`PrÃ©-condiÃ§Ã£o / CenÃ¡rio: ${r[\"PrÃ©-condiÃ§Ã£o / CenÃ¡rio\"] || \"\"}\\n` +\n`Passos: ${r.Passos || \"\"}\\n` +\n`Resultado Esperado: ${r[\"Resultado Esperado\"] || \"\"}\\n` +\n`Status: ${r.Status || \"\"}\\n` +\n`Tags: ${r.Tags || \"\"}`\n)).join(\"\\n--------------------\\n\");\n\nconst countsBySheet = availableSheets.map(sheet => {\n  const total = rows.filter(r => r._sheet === sheet).length;\n  return `${sheet}: ${total}`;\n}).join(\" | \");\n\nconst userPrompt =\n`Abas disponÃ­veis: ${availableSheets.join(\", \")}\nAbas selecionadas para esta pergunta: ${selectedSheets.join(\", \")}\nContagem atual por aba: ${countsBySheet}\n\nPergunta do usuÃ¡rio: ${pergunta}\n\nResponda usando apenas os cenÃ¡rios do contexto abaixo.\nSe o usuÃ¡rio pedir total geral e nenhuma aba especÃ­fica foi mencionada, considere todas as abas.\nSempre informe, quando relevante, em qual aba estÃ¡ cada cenÃ¡rio.\n\nContexto de cenÃ¡rios:\n\n${contexto}`;\n\nreturn [{ json: { ...cmd, userPrompt, contextCount: fallback.length, selectedSheets, availableSheets } }];"
       },
       "id": "a679f7b8-c1c4-47b3-82df-54123916c374",
       "name": "Preparar Contexto IA",
@@ -774,96 +646,33 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ \"https://discord.com/api/v10/webhooks/\" + $('Webhook Discord').first().json.body.application_id + \"/\" + ( $('Webhook Discord').first().json.body.interaction_token || ($('Webhook Discord').first().json.body.body && $('Webhook Discord').first().json.body.body.token) || \"\" ) }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "ngrok-skip-browser-warning",
-              "value": "1"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ { \"content\": String($json.content || \"Sem resposta.\").slice(0, 1500) } }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        25328,
-        19504
-      ],
-      "id": "cba07332-bcdb-4f38-9ac0-d38f4d415531",
-      "name": "HTTP Request"
-    },
-    {
-      "parameters": {
-        "documentId": {
-          "__rl": true,
-          "value": "={{ $json.config?.googleSheetsId || $json.config?.GOOGLE_SHEETS_ID || $json.GOOGLE_SHEETS_ID || \"1fHuX726h579bXDUq5du8lxQxerH2pztu2eA7HoP-nyo\" }}",
-          "mode": "id"
-        },
-        "sheetName": {
-          "__rl": true,
-          "mode": "name",
-          "value": "Testes Funcionais"
-        },
-        "options": {}
+        "jsCode": "\nconst config = $json.config || {};\nconst baseUrl = String(config.appPublicUrl || config.APP_PUBLIC_URL || '').trim().replace(/\\/+$/, '');\nconst tenantId = String(config.tenantId || $json.tenantId || $json.tenantSlug || '').trim();\n\nif (!baseUrl) {\n  throw new Error('URL publica do app nao encontrada na configuracao.');\n}\n\nconst response = await fetch(\n  baseUrl + '/api/n8n/board/cards?tenantId=' + encodeURIComponent(tenantId),\n  {\n    headers: { 'content-type': 'application/json' },\n    cache: 'no-store',\n  }\n);\n\nconst data = await response.json().catch(() => ({}));\nif (!response.ok || !data?.ok) {\n  throw new Error(data?.error || 'Falha ao carregar cenarios do banco (' + response.status + ').');\n}\n\nconst cards = Array.isArray(data.items) ? data.items : [];\n\nfunction toRow(card) {\n  const acceptanceCriteria = Array.isArray(card.acceptanceCriteria) ? card.acceptanceCriteria : [];\n  const scenarios = Array.isArray(card.scenarios) ? card.scenarios : [];\n  const isPerformance =\n    card.column === 'testing' ||\n    /perf/i.test(String(card.id || '')) ||\n    /performance/i.test(String(card.module || '')) ||\n    /performance/i.test(String(card.title || ''));\n\n  const group = isPerformance ? 'Performance' : 'Funcional';\n\n  return {\n    _group: group,\n    grupo: group,\n    ID: card.id || '',\n    Categoria: group,\n    'Módulo': card.module || card.epic || 'Geral',\n    'Título': card.title || card.id || '',\n    Objetivo: card.businessGoal || '',\n    'Pré-condição / Cenário': card.qaNotes || '',\n    Passos: acceptanceCriteria.join('\\n'),\n    'Resultado Esperado': acceptanceCriteria.join('\\n'),\n    Status: card.column || 'Backlog',\n    Tags: scenarios.map((scenario) => scenario.id).filter(Boolean).join(', '),\n    card,\n    scenarios,\n  };\n}\n\nreturn cards.map((card) => ({ json: toRow(card) }));\n"
       },
       "id": "8743ae85-c37f-4401-a8ce-ae442de1ccf5",
-      "name": "GS Ler Funcionais IA",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.7,
+      "name": "DB Ler Funcionais IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         23856,
         19360
-      ],
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "36mCFMfO8zf5LClo",
-          "name": "Google Sheets OAuth2 API"
-        }
-      }
+      ]
     },
     {
       "parameters": {
-        "documentId": {
-          "__rl": true,
-          "value": "={{ $json.config?.googleSheetsId || $json.config?.GOOGLE_SHEETS_ID || $json.GOOGLE_SHEETS_ID || \"1fHuX726h579bXDUq5du8lxQxerH2pztu2eA7HoP-nyo\" }}",
-          "mode": "id"
-        },
-        "sheetName": {
-          "__rl": true,
-          "mode": "name",
-          "value": "Testes Performance"
-        },
-        "options": {}
+        "jsCode": "\nconst config = $json.config || {};\nconst baseUrl = String(config.appPublicUrl || config.APP_PUBLIC_URL || '').trim().replace(/\\/+$/, '');\nconst tenantId = String(config.tenantId || $json.tenantId || $json.tenantSlug || '').trim();\n\nif (!baseUrl) {\n  throw new Error('URL publica do app nao encontrada na configuracao.');\n}\n\nconst response = await fetch(\n  baseUrl + '/api/n8n/board/cards?tenantId=' + encodeURIComponent(tenantId),\n  {\n    headers: { 'content-type': 'application/json' },\n    cache: 'no-store',\n  }\n);\n\nconst data = await response.json().catch(() => ({}));\nif (!response.ok || !data?.ok) {\n  throw new Error(data?.error || 'Falha ao carregar cenarios do banco (' + response.status + ').');\n}\n\nconst cards = Array.isArray(data.items) ? data.items : [];\n\nfunction toRow(card) {\n  const acceptanceCriteria = Array.isArray(card.acceptanceCriteria) ? card.acceptanceCriteria : [];\n  const scenarios = Array.isArray(card.scenarios) ? card.scenarios : [];\n  const isPerformance =\n    card.column === 'testing' ||\n    /perf/i.test(String(card.id || '')) ||\n    /performance/i.test(String(card.module || '')) ||\n    /performance/i.test(String(card.title || ''));\n\n  const group = isPerformance ? 'Performance' : 'Funcional';\n\n  return {\n    _group: group,\n    grupo: group,\n    ID: card.id || '',\n    Categoria: group,\n    'Módulo': card.module || card.epic || 'Geral',\n    'Título': card.title || card.id || '',\n    Objetivo: card.businessGoal || '',\n    'Pré-condição / Cenário': card.qaNotes || '',\n    Passos: acceptanceCriteria.join('\\n'),\n    'Resultado Esperado': acceptanceCriteria.join('\\n'),\n    Status: card.column || 'Backlog',\n    Tags: scenarios.map((scenario) => scenario.id).filter(Boolean).join(', '),\n    card,\n    scenarios,\n  };\n}\n\nreturn cards.map((card) => ({ json: toRow(card) }));\n"
       },
       "id": "c7fd9c7f-6216-4462-b3a6-5a62bf3bf158",
-      "name": "GS Ler Performance IA",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.7,
+      "name": "DB Ler Performance IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         23856,
         19552
-      ],
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "36mCFMfO8zf5LClo",
-          "name": "Google Sheets OAuth2 API"
-        }
-      }
+      ]
     },
     {
       "parameters": {
-        "jsCode": "return $input.all().map(item => ({ json: { ...item.json, _sheet: 'Testes Funcionais' } }));"
+        "jsCode": "\nreturn $input.all().map(item => ({ json: { ...item.json, _group: 'Funcional', grupo: 'Funcional', categoria: 'Funcional' } }));\n"
       },
       "id": "48faeb3f-d844-487f-8265-a816aee4c301",
       "name": "Tag Funcionais IA",
@@ -876,7 +685,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return $input.all().map(item => ({ json: { ...item.json, _sheet: 'Testes Performance' } }));"
+        "jsCode": "\nreturn $input.all().map(item => ({ json: { ...item.json, _group: 'Performance', grupo: 'Performance', categoria: 'Performance' } }));\n"
       },
       "id": "58f5b79d-f332-46bc-98ac-0506cf62566b",
       "name": "Tag Performance IA",
@@ -890,7 +699,7 @@
     {
       "parameters": {},
       "id": "c1e920dd-72c1-4eed-a4ab-d08695434c6d",
-      "name": "Merge IA Sheets",
+      "name": "Merge IA Cenários",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
@@ -900,72 +709,16 @@
     },
     {
       "parameters": {
-        "jsCode": "return [{ json: { content: 'pong do n8n' } }];"
+        "jsCode": "\nconst config = $json.config || {};\nconst baseUrl = String(config.appPublicUrl || config.APP_PUBLIC_URL || '').trim().replace(/\\/+$/, '');\nconst tenantId = String(config.tenantId || $json.tenantId || $json.tenantSlug || '').trim();\n\nif (!baseUrl) {\n  throw new Error('URL publica do app nao encontrada na configuracao.');\n}\n\nconst response = await fetch(\n  baseUrl + '/api/n8n/board/cards?tenantId=' + encodeURIComponent(tenantId),\n  {\n    headers: { 'content-type': 'application/json' },\n    cache: 'no-store',\n  }\n);\n\nconst data = await response.json().catch(() => ({}));\nif (!response.ok || !data?.ok) {\n  throw new Error(data?.error || 'Falha ao carregar cenarios do banco (' + response.status + ').');\n}\n\nconst cards = Array.isArray(data.items) ? data.items : [];\n\nfunction toRow(card) {\n  const acceptanceCriteria = Array.isArray(card.acceptanceCriteria) ? card.acceptanceCriteria : [];\n  const scenarios = Array.isArray(card.scenarios) ? card.scenarios : [];\n  const isPerformance =\n    card.column === 'testing' ||\n    /perf/i.test(String(card.id || '')) ||\n    /performance/i.test(String(card.module || '')) ||\n    /performance/i.test(String(card.title || ''));\n\n  const group = isPerformance ? 'Performance' : 'Funcional';\n\n  return {\n    _group: group,\n    grupo: group,\n    ID: card.id || '',\n    Categoria: group,\n    'Módulo': card.module || card.epic || 'Geral',\n    'Título': card.title || card.id || '',\n    Objetivo: card.businessGoal || '',\n    'Pré-condição / Cenário': card.qaNotes || '',\n    Passos: acceptanceCriteria.join('\\n'),\n    'Resultado Esperado': acceptanceCriteria.join('\\n'),\n    Status: card.column || 'Backlog',\n    Tags: scenarios.map((scenario) => scenario.id).filter(Boolean).join(', '),\n    card,\n    scenarios,\n  };\n}\n\nreturn cards.map((card) => ({ json: toRow(card) }));\n"
       },
-      "id": "3f4e4daa-27d4-46f8-bc64-58777b1099d3",
-      "name": "HTTP Request Discord Status",
+      "id": "c14f4d30-be39-4341-b7d8-5d9a00260a75",
+      "name": "DB Ler para Deletar",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        24528,
-        20992
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ \"https://discord.com/api/v10/webhooks/\" + $json.application_id + \"/\" + $json.interaction_token }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ { \"content\": String($json.content || \"Sem resposta.\").slice(0, 1500) } }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        25024,
-        20432
-      ],
-      "id": "29e86850-77ed-4f20-9d78-50a91aee337c",
-      "name": "HTTP Request Discord Status1"
-    },
-    {
-      "parameters": {
-        "documentId": {
-          "__rl": true,
-          "value": "={{ $json.config?.googleSheetsId || $json.config?.GOOGLE_SHEETS_ID || $json.GOOGLE_SHEETS_ID || \"1fHuX726h579bXDUq5du8lxQxerH2pztu2eA7HoP-nyo\" }}",
-          "mode": "id"
-        },
-        "sheetName": {
-          "__rl": true,
-          "mode": "name",
-          "value": "={{ $('Normalizar Payload').item.json.sheet }}"
-        },
-        "options": {}
-      },
-      "id": "c14f4d30-be39-4341-b7d8-5d9a00260a75",
-      "name": "GS Ler para Deletar",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.7,
-      "position": [
         23856,
         20800
-      ],
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "36mCFMfO8zf5LClo",
-          "name": "Google Sheets OAuth2 API"
-        }
-      }
+      ]
     },
     {
       "parameters": {
@@ -982,7 +735,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const item = $json;\n\nconst scenarioId = item.ID || item.id || \"SEM-ID\";\nconst moduleName = item[\"Módulo\"] || item.modulo || \"Geral\";\nconst title = item[\"Título\"] || item.titulo || scenarioId;\nconst objective = item.Objetivo || item.objetivo || \"\";\nconst pre = item[\"Pré-condição / Cenário\"] || item.precondicao || \"\";\nconst steps = item.Passos || item.passos || \"\";\nconst expected = item[\"Resultado Esperado\"] || item.resultado || \"\";\nconst category = (item.Categoria || item.categoria || \"Funcional\").toString();\nconst sheet = (item.sheet || \"Testes Funcionais\").toString().trim();\n\nconst prompt =\n`You are a senior QA automation engineer.\nRewrite the scenario below into high-quality Gherkin BDD for automation.\n\nRules:\n- write in English\n- output only the .feature content\n- do not copy the manual test literally\n- normalize the wording for reusable automation steps\n- keep the business intent from the original scenario\n- use clear Feature and Scenario names\n- use tags with the scenario ID and category\n- prefer concise, automation-friendly Given/When/Then steps\n- do not invent requirements that are not present\n\nScenario data:\nID: ${scenarioId}\nModule: ${moduleName}\nCategory: ${category}\nSheet: ${sheet}\nTitle: ${title}\nObjective: ${objective}\nPreconditions: ${pre}\nManual Steps: ${steps}\nExpected Result: ${expected}`;\n\nreturn [{\n  json: {\n    ...item,\n    owner: item.config?.githubOwner || $vars.GITHUB_OWNER || \"PauloCabralGit\",\n    repo: item.config?.githubRepo || $vars.GITHUB_REPO || \"Playwright-N8N-IA\",\n    branch: item.config?.githubBranch || $vars.GITHUB_BRANCH || \"main\",\n    scenarioId,\n    moduleName,\n    category,\n    bddPrompt: prompt\n  }\n}];"
+        "jsCode": "\nconst item = $json;\n\nconst scenarioId = item.ID || item.id || \"SEM-ID\";\nconst moduleName = item[\"Módulo\"] || item.modulo || \"Geral\";\nconst title = item[\"Título\"] || item.titulo || scenarioId;\nconst objective = item.Objetivo || item.objetivo || \"\";\nconst pre = item[\"Pré-condição / Cenário\"] || item.precondicao || \"\";\nconst steps = item.Passos || item.passos || \"\";\nconst expected = item[\"Resultado Esperado\"] || item.resultado || \"\";\nconst category = (item.Categoria || item.categoria || \"Funcional\").toString();\nconst group = (item._group || item.grupo || item.Categoria || \"Funcional\").toString().trim();\n\nconst prompt = item.bddPrompt || (\n  \"You are a senior QA automation engineer.\\n\" +\n  \"Rewrite the scenario below into high-quality Gherkin BDD for automation.\\n\\n\" +\n  \"Rules:\\n\" +\n  \"- write in English\\n\" +\n  \"- output only the .feature content\\n\" +\n  \"- do not copy the manual test literally\\n\" +\n  \"- normalize the wording for reusable automation steps\\n\" +\n  \"- keep the business intent from the original scenario\\n\" +\n  \"- use clear Feature and Scenario names\\n\" +\n  \"- use tags with the scenario ID and category\\n\" +\n  \"- prefer concise, automation-friendly Given/When/Then steps\\n\" +\n  \"- do not invent requirements that are not present\\n\\n\" +\n  \"Scenario data:\\n\" +\n  \"ID: \" + scenarioId + \"\\n\" +\n  \"Module: \" + moduleName + \"\\n\" +\n  \"Category: \" + category + \"\\n\" +\n  \"Group: \" + group + \"\\n\" +\n  \"Title: \" + title + \"\\n\" +\n  \"Objective: \" + objective + \"\\n\" +\n  \"Preconditions: \" + pre + \"\\n\" +\n  \"Manual Steps: \" + steps + \"\\n\" +\n  \"Expected Result: \" + expected\n);\n\nreturn [{\n  json: {\n    ...item,\n    owner: item.config?.githubOwner || $vars.GITHUB_OWNER || \"PauloCabralGit\",\n    repo: item.config?.githubRepo || $vars.GITHUB_REPO || \"Playwright-N8N-IA\",\n    branch: item.config?.githubBranch || $vars.GITHUB_BRANCH || \"main\",\n    scenarioId,\n    moduleName,\n    category,\n    group,\n    bddPrompt: prompt\n  }\n}];\n"
       },
       "id": "b532b3db-9d49-4fc4-a437-e00241bfad78",
       "name": "Montar Gherkin BDD",
@@ -1043,7 +796,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const text = String($json.gherkin || \"\");\nconst encoded = Buffer.from(text, \"utf8\").toString(\"base64\");\n\nconst featurePath =\n  $json.featurePath ||\n  ((($json.sheet && /performance/i.test(String($json.sheet))) ? \"features/performance\" : \"features/funcionais\") + \"/\" + String($json.scenarioId || $json.id || \"sem-id\").toLowerCase() + \".feature\");\n\nreturn [{\n  json: {\n    ...$json,\n    featurePath,\n    githubMessage: $json.commitMessage,\n    githubContentBase64: encoded,\n    githubBranch: $json.branch\n  }\n}];"
+        "jsCode": "\nconst text = String($json.gherkin || \"\");\nconst encoded = Buffer.from(text, \"utf8\").toString(\"base64\");\n\nconst group = String($json.group || $json.grupo || $json.categoria || \"Funcional\").trim();\nconst featurePath =\n  $json.featurePath ||\n  (((/performance/i.test(group)) ? \"features/performance\" : \"features/funcionais\") + \"/\" + String($json.scenarioId || $json.id || \"sem-id\").toLowerCase() + \".feature\");\n\nreturn [{\n  json: {\n    ...$json,\n    featurePath,\n    githubMessage: $json.commitMessage,\n    githubContentBase64: encoded,\n    githubBranch: $json.branch\n  }\n}];\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1057,12 +810,12 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "qa-platform/google-sheets-sync",
+        "path": "qa-platform/unified-sync",
         "responseMode": "lastNode",
         "options": {}
       },
       "id": "297760f4-2445-4809-8ea1-818db7d13b43",
-      "name": "Webhook Discord1",
+      "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
@@ -1073,16 +826,19 @@
     },
     {
       "parameters": {
-        "jsCode": "const config = $json || {};\n\nconst pickWebhook = () => {\n  const candidates = [\n    'Webhook Discord1',\n    'Webhook Next Status',\n    'Webhook Next Created',\n    'Webhook Discord',\n  ];\n\n  for (const name of candidates) {\n    try {\n      const value = $(name).first().json;\n      if (value && Object.keys(value).length > 0) return value;\n    } catch (e) {}\n  }\n\n  return {};\n};\n\nconst root = pickWebhook();\nconst body = root.body || {};\nconst options = body.options || {};\nconst scenario = root.scenario || body.scenario || {};\nconst card = root.card || body.card || {};\nconst acceptanceCriteria = Array.isArray(body.acceptanceCriteria)\n  ? body.acceptanceCriteria\n  : Array.isArray(card.acceptanceCriteria)\n    ? card.acceptanceCriteria\n    : [];\nconst scenarios = Array.isArray(body.scenarios)\n  ? body.scenarios\n  : Array.isArray(card.scenarios)\n    ? card.scenarios\n    : [];\nconst actionFromApi = root.action || body.action || body.command || root.command || '';\n\nconst inferredAction =\n  actionFromApi ||\n  (Array.isArray(body.scenarios) && body.scenarios.length ? 'create' : '') ||\n  (body.scenario ? 'create' : '') ||\n  (root.source === 'IA' && (body.id || root.id || scenario.id || card.title) ? 'create' : '') ||\n  'unknown';\n\nconst command = body.command || root.command || inferredAction || 'unknown';\n\nconst map = {\n  qa_buscar: 'buscar',\n  qa_ver: 'ver',\n  qa_add: 'adicionar',\n  qa_editar: 'editar',\n  qa_status: 'status',\n  qa_del: 'deletar',\n  qa_ia: 'ia',\n  pingqa: 'pingqa',\n  create: 'adicionar',\n  move: 'status',\n  update: 'status',\n  create_scenario: 'adicionar',\n  scenario_created: 'adicionar',\n  update_status: 'status',\n};\n\nconst appId = root.application_id || body.application_id || body.body?.application_id || '';\nconst interactionToken = root.interaction_token || body.interaction_token || body.token || body.body?.token || '';\nconst interactionId = root.interaction_id || body.interaction_id || body.id || body.body?.id || '';\nconst userValue = scenario.owner || body.user || root.user || 'api';\n\nconst inferredSheet =\n  options.aba ||\n  root.sheet ||\n  body.sheet ||\n  ((options.id || scenario.id || card.title || '').toUpperCase().startsWith('CT-PERF')\n    ? (config.googleSheetsPerformanceTab || 'Testes Performance')\n    : (config.googleSheetsFunctionalTab || 'Testes Funcionais'));\n\nreturn [{\n  json: {\n    ...root,\n    card,\n    acceptanceCriteria,\n    scenarios,\n    config,\n    action: map[command] || 'unknown',\n    text: options.texto || options.pergunta || root.text || card.businessGoal || '',\n    id: options.id || scenario.id || root.id || body.id || card.id || '',\n    status: options.status || root.status || body.status || scenario.status || card.status || '',\n    field: options.campo || root.field || '',\n    value: options.valor || root.value || '',\n    sheet: inferredSheet,\n    categoria: scenario.category || root.categoria || body.category || card.source || '',\n    modulo: scenario.module || root.modulo || body.module || card.module || '',\n    titulo: scenario.title || root.titulo || body.title || card.title || '',\n    objetivo: scenario.objective || root.objetivo || body.businessGoal || card.businessGoal || '',\n    precondicao: scenario.preconditions || root.precondicao || body.precondicao || card.qaNotes || '',\n    passos: scenario.steps || root.passos || body.passos || '',\n    resultado: scenario.expectedResult || root.resultado || body.resultado || acceptanceCriteria.join('\\n') || '',\n    tags: Array.isArray(scenario.tags) ? scenario.tags.join(', ') : (scenario.tags || root.tags || body.tags || card.source || ''),\n    prioridade: scenario.priority || root.prioridade || body.priority || card.priority || '',\n    user: userValue,\n    application_id: appId,\n    interaction_token: interactionToken,\n    interaction_id: interactionId,\n    responseTarget: appId && interactionToken ? 'discord' : 'api',\n  }\n}];"
+        "httpMethod": "POST",
+        "path": "discord-qa",
+        "options": {}
       },
-      "id": "80a32a86-7600-4318-ba40-d82aecffeced",
-      "name": "Normalizar Payload1",
-      "type": "n8n-nodes-base.code",
+      "id": "e6e6b96e-4b20-4c02-95be-3481664ea7e1",
+      "name": "Webhook Discord",
+      "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        23200,
-        20480
-      ]
+        4272,
+        6960
+      ],
+      "webhookId": "94e2ebae-944a-4083-a168-27c904a41cb1"
     },
     {
       "parameters": {
@@ -1183,7 +939,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const item = $json;\n\nconst scenarioId = item.ID || item.id || \"SEM-ID\";\nconst card = item.card || item.body?.card || {};\nconst acceptanceCriteria = Array.isArray(item.acceptanceCriteria)\n  ? item.acceptanceCriteria\n  : Array.isArray(card.acceptanceCriteria)\n    ? card.acceptanceCriteria\n    : [];\nconst scenarios = Array.isArray(item.scenarios)\n  ? item.scenarios\n  : Array.isArray(card.scenarios)\n    ? card.scenarios\n    : [];\nconst moduleName = item[\"M?dulo\"] || item.modulo || card.module || \"Geral\";\nconst title = item[\"T?tulo\"] || item.titulo || card.title || scenarioId;\nconst objective = item.Objetivo || item.objetivo || item.businessGoal || card.businessGoal || \"\";\nconst pre = item[\"Pr?-condi??o / Cen?rio\"] || item.precondicao || item.qaNotes || card.qaNotes || \"\";\nconst steps = item.Passos || item.passos || \"\";\nconst expected = item[\"Resultado Esperado\"] || item.resultado || acceptanceCriteria.join(\"\n\") || \"\";\nconst category = (item.Categoria || item.categoria || card.source || \"Funcional\").toString();\nconst sheet = (item.sheet || \"Testes Funcionais\").toString().trim();\n\nconst hasUsefulContext = [title, objective, pre, steps, expected, card.qaNotes, acceptanceCriteria.join(\" \"), scenarios.map(s => s.title || s.id).join(' ')].some(v => String(v || \"\").trim().length > 0);\nconst shouldUseAI = hasUsefulContext;\n\nconst acceptanceList = acceptanceCriteria.length > 0\n  ? acceptanceCriteria.map((a, i) => `${i + 1}. ${String(a)}`).join(\"\n\")\n  : \"\";\n\nconst scenarioSummary = scenarios.length > 0\n  ? scenarios.map(s => `- ${s.id || ''} ${s.title || ''} ${s.source ? `(${s.source})` : ''} ${s.status ? `[${s.status}]` : ''}`.trim()).join(\"\n\")\n  : \"\";\n\nconst fallbackGherkin = `Feature: ${title || scenarioId}\n\n  @${scenarioId} @${category}\n  Scenario: ${objective || title || scenarioId}\n    Given the scenario ${scenarioId} is available\n    When the user processes the functional requirements\n    Then the expected business outcome should be validated`;\n\nconst prompt =\n`You are a senior QA automation engineer.\nRewrite the scenario below into high-quality Gherkin BDD for automation.\n\nRules:\n- write in English\n- output only the .feature content\n- do not copy the manual test literally\n- normalize the wording for reusable automation steps\n- keep the business intent from the original scenario\n- use clear Feature and Scenario names\n- use tags with the scenario ID and category\n- prefer concise, automation-friendly Given/When/Then steps\n- do not invent requirements that are not present\n- if the title/objective are sparse, infer the behavior from businessGoal, qaNotes and acceptanceCriteria without inventing new rules\n\nScenario data:\nID: ${scenarioId}\nModule: ${moduleName}\nCategory: ${category}\nSheet: ${sheet}\nTitle: ${title}\nBusiness Goal: ${objective}\nQA Notes: ${pre}\nManual Steps: ${steps}\nExpected Result: ${expected}\nAcceptance Criteria:\n${acceptanceList || '- none provided'}\nRelated Scenarios:\n${scenarioSummary || '- none provided'}`;\n\nreturn [{\n  json: {\n    ...item,\n    card,\n    acceptanceCriteria,\n    scenarios,\n    scenarioId,\n    moduleName,\n    category,\n    sheet,\n    shouldUseAI,\n    fallbackGherkin,\n    bddPrompt: prompt\n  }\n}];"
+        "jsCode": "\nconst item = $json;\n\nconst scenarioId = item.ID || item.id || \"SEM-ID\";\nconst card = item.card || item.body?.card || {};\nconst acceptanceCriteria = Array.isArray(item.acceptanceCriteria)\n  ? item.acceptanceCriteria\n  : Array.isArray(card.acceptanceCriteria)\n    ? card.acceptanceCriteria\n    : [];\nconst scenarios = Array.isArray(item.scenarios)\n  ? item.scenarios\n  : Array.isArray(card.scenarios)\n    ? card.scenarios\n    : [];\nconst moduleName = item[\"Módulo\"] || item.modulo || card.module || \"Geral\";\nconst title = item[\"Título\"] || item.titulo || card.title || scenarioId;\nconst objective = item.Objetivo || item.objetivo || item.businessGoal || card.businessGoal || \"\";\nconst pre = item[\"Pré-condição / Cenário\"] || item.precondicao || item.qaNotes || card.qaNotes || \"\";\nconst steps = item.Passos || item.passos || \"\";\nconst expected = item[\"Resultado Esperado\"] || item.resultado || acceptanceCriteria.join(\"\\n\") || \"\";\nconst category = (item.Categoria || item.categoria || card.source || \"Funcional\").toString();\nconst group = (item._group || item.grupo || item.Categoria || \"Funcional\").toString().trim();\n\nconst hasUsefulContext = [title, objective, pre, steps, expected, card.qaNotes, acceptanceCriteria.join(\" \"), scenarios.map(s => s.title || s.id).join(\" \")].some(v => String(v || \"\").trim().length > 0);\nconst shouldUseAI = hasUsefulContext;\n\nconst acceptanceList = acceptanceCriteria.length > 0\n  ? acceptanceCriteria.map((a, i) => (i + 1) + \". \" + String(a)).join(\"\\n\")\n  : \"\";\n\nconst scenarioSummary = scenarios.length > 0\n  ? scenarios.map(s => \"- \" + (s.id || \"\") + \" \" + (s.title || \"\") + \" \" + (s.source ? \"(\" + s.source + \")\" : \"\") + \" \" + (s.status ? \"[\" + s.status + \"]\" : \"\").trim()).join(\"\\n\")\n  : \"\";\n\nconst fallbackGherkin = [\n  \"Feature: \" + (title || scenarioId),\n  \"\",\n  \"  @\" + scenarioId + \" @\" + category,\n  \"  Scenario: \" + (objective || title || scenarioId),\n  \"    Given the scenario \" + scenarioId + \" is available\",\n  \"    When the user processes the functional requirements\",\n  \"    Then the expected business outcome should be validated\"\n].join(\"\\n\");\n\nconst prompt = item.bddPrompt || (\n  \"You are a senior QA automation engineer.\\n\" +\n  \"Rewrite the scenario below into high-quality Gherkin BDD for automation.\\n\\n\" +\n  \"Rules:\\n\" +\n  \"- write in English\\n\" +\n  \"- output only the .feature content\\n\" +\n  \"- do not copy the manual test literally\\n\" +\n  \"- normalize the wording for reusable automation steps\\n\" +\n  \"- keep the business intent from the original scenario\\n\" +\n  \"- use clear Feature and Scenario names\\n\" +\n  \"- use tags with the scenario ID and category\\n\" +\n  \"- prefer concise, automation-friendly Given/When/Then steps\\n\" +\n  \"- do not invent requirements that are not present\\n\" +\n  \"- if the title/objective are sparse, infer the behavior from businessGoal, qaNotes and acceptanceCriteria without inventing new rules\\n\\n\" +\n  \"Scenario data:\\n\" +\n  \"ID: \" + scenarioId + \"\\n\" +\n  \"Module: \" + moduleName + \"\\n\" +\n  \"Category: \" + category + \"\\n\" +\n  \"Group: \" + group + \"\\n\" +\n  \"Title: \" + title + \"\\n\" +\n  \"Business Goal: \" + objective + \"\\n\" +\n  \"QA Notes: \" + pre + \"\\n\" +\n  \"Manual Steps: \" + steps + \"\\n\" +\n  \"Expected Result: \" + expected + \"\\n\" +\n  \"Acceptance Criteria:\\n\" +\n  (acceptanceList || \"- none provided\") + \"\\n\" +\n  \"Related Scenarios:\\n\" +\n  (scenarioSummary || \"- none provided\");\n\nreturn [{\n  json: {\n    ...item,\n    card,\n    acceptanceCriteria,\n    scenarios,\n    scenarioId,\n    moduleName,\n    category,\n    group,\n    shouldUseAI,\n    fallbackGherkin,\n    bddPrompt: prompt\n  }\n}];\n"
       },
       "id": "1b851338-40bf-4c5d-9932-d893b30300ba",
       "name": "Preparar Prompt BDD IA",
@@ -1214,7 +970,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const original = $(\"Preparar Prompt BDD IA\").first().json;\nconst aiText = String($json.output || $json.content || $json.error || \"\").trim();\n\nconst rateLimited = /too many requests|rate limit|provider returned error|429/i.test(aiText);\nconst fallbackText = original.fallbackGherkin || `Feature: ${original.titulo || original.scenarioId || original.id}\n\n  @${original.scenarioId || original.id} @${original.category || 'Funcional'}\n  Scenario: ${original.objetivo || original.titulo || original.scenarioId || original.id}\n    Given the scenario ${original.scenarioId || original.id} exists\n    When the user processes the scenario\n    Then the expected outcome should be recorded`;\n\nconst finalGherkin = !original.shouldUseAI || rateLimited || !aiText || /^I?m sorry/i.test(aiText)\n  ? fallbackText\n  : aiText;\n\nconst sheet = (original.sheet || \"Testes Funcionais\").toString().trim();\nconst folder = /performance/i.test(sheet) ? \"features/performance\" : \"features/funcionais\";\nconst featurePath = `${folder}/${String(original.scenarioId || original.id).toLowerCase()}.feature`;\n\nconst owner = original.config?.githubOwner || $vars.GITHUB_OWNER || \"PauloCabralGit\";\nconst repo = original.config?.githubRepo || $vars.GITHUB_REPO || \"Playwright-N8N-IA\";\nconst branch = original.config?.githubBranch || $vars.GITHUB_BRANCH || \"main\";\n\nreturn [{\n  json: {\n    ...original,\n    owner,\n    repo,\n    branch,\n    featurePath,\n    gherkin: finalGherkin,\n    commitMessage: `test(bdd): sync ${original.scenarioId || original.id} feature file`,\n    aiFallbackUsed: !original.shouldUseAI || rateLimited || !aiText || /^I?m sorry/i.test(aiText)\n  }\n}];"
+        "jsCode": "\nconst original = $(\"Preparar Prompt BDD IA\").first().json;\nconst aiText = String($json.output || $json.content || $json.error || \"\").trim();\n\nconst rateLimited = /too many requests|rate limit|provider returned error|429/i.test(aiText);\nconst fallbackText = original.fallbackGherkin || [\n  \"Feature: \" + (original.titulo || original.scenarioId || original.id || \"\"),\n  \"\",\n  \"  @\" + (original.scenarioId || original.id || \"SEM-ID\") + \" @\" + (original.category || \"Funcional\"),\n  \"  Scenario: \" + (original.objetivo || original.titulo || original.scenarioId || original.id || \"\"),\n  \"    Given the scenario \" + (original.scenarioId || original.id || \"SEM-ID\") + \" exists\",\n  \"    When the user processes the scenario\",\n  \"    Then the expected outcome should be recorded\"\n].join(\"\\n\");\n\nconst finalGherkin = !original.shouldUseAI || rateLimited || !aiText || /^I?m sorry/i.test(aiText)\n  ? fallbackText\n  : aiText;\n\nconst group = String(original.group || original.grupo || original.categoria || \"Funcional\").trim();\nconst folder = /performance/i.test(group) ? \"features/performance\" : \"features/funcionais\";\nconst featurePath = folder + \"/\" + String(original.scenarioId || original.id || \"sem-id\").toLowerCase() + \".feature\";\n\nconst owner = original.config?.githubOwner || $vars.GITHUB_OWNER || \"PauloCabralGit\";\nconst repo = original.config?.githubRepo || $vars.GITHUB_REPO || \"Playwright-N8N-IA\";\nconst branch = original.config?.githubBranch || $vars.GITHUB_BRANCH || \"main\";\n\nreturn [{\n  json: {\n    ...original,\n    owner,\n    repo,\n    branch,\n    featurePath,\n    gherkin: finalGherkin,\n    commitMessage: \"test(bdd): sync \" + (original.scenarioId || original.id) + \" feature file\",\n    aiFallbackUsed: !original.shouldUseAI || rateLimited || !aiText || /^I?m sorry/i.test(aiText)\n  }\n}];\n"
       },
       "id": "46a5e09a-e581-4823-9e16-3d77f434e9d0",
       "name": "Formatar BDD IA",
@@ -1299,77 +1055,6 @@
     },
     {
       "parameters": {
-        "httpMethod": "POST",
-        "path": "qa-platform/scenario-status-update",
-        "responseMode": "lastNode",
-        "options": {}
-      },
-      "id": "5c773660-5b01-41ad-8cd4-f9a41bdef10f",
-      "name": "Webhook Next Status",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        22976,
-        20688
-      ],
-      "webhookId": "916832f5-8c11-4293-a34d-be1223b1a278"
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "https://mathilde-obcuneate-allusively.ngrok-free.dev/api/settings/n8n/config",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "load-config-secondary-node",
-      "name": "Load Config Secondary",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        23100,
-        20688
-      ]
-    },
-    {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "qa-platform/scenario-created",
-        "responseMode": "lastNode",
-        "options": {}
-      },
-      "id": "4a9b3e14-71c1-4222-a3d1-9ecf5740b9ef",
-      "name": "Webhook Next Created",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        22976,
-        20896
-      ],
-      "webhookId": "5882b72c-580e-4ee8-a0be-a5827b64c871"
-    },
-    {
-      "parameters": {
-        "jsCode": "const root = $json || {};\nconst body = root.body || {};\nconst scenario = root.scenario || body.scenario || {};\n\nreturn [{\n  json: {\n    ...root,\n    ...body,\n    ...scenario,\n    action: \"adicionar\",\n    ok: true,\n    message: \"Webhook scenario-created recebido com sucesso.\",\n    responseTarget: root.responseTarget || body.responseTarget || \"api\"\n  }\n}];"
-      },
-      "id": "44a8b08d-6568-4b7b-8b8c-58fe6809e228",
-      "name": "Resposta API Scenario Created",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        23200,
-        20896
-      ]
-    },
-    {
-      "parameters": {
         "model": {
           "__rl": true,
           "value": "openai/gpt-oss-20b:free",
@@ -1419,10 +1104,23 @@
           "name": "OpenAI account"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    ok: true,\n    content: $json.content || \"Processado com sucesso.\",\n    id: $json.id || \"\",\n    responseTarget: 'discord',\n    application_id: $json.application_id || $json.interaction?.application_id || '',\n    interaction_token: $json.interaction_token || $json.token || '',\n    interaction_id: $json.interaction_id || $json.id || ''\n  }\n}];"
+      },
+      "id": "b2a2c9f4-9160-40f4-a7c4-40cf5d8f5f25",
+      "name": "Resposta Discord",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        25024,
+        20496
+      ]
     }
   ],
   "pinData": {
-    "Webhook Discord1": [
+    "Webhook": [
       {
         "json": {
           "headers": {
@@ -1483,7 +1181,7 @@
               ]
             }
           },
-          "webhookUrl": "https://pauloqa.app.n8n.cloud/webhook/qa-platform/google-sheets-sync",
+          "webhookUrl": "https://pauloqa.app.n8n.cloud/webhook/qa-platform/unified-sync",
           "executionMode": "production"
         },
         "pairedItem": {
@@ -1493,28 +1191,6 @@
     ]
   },
   "connections": {
-    "Webhook Discord": {
-      "main": [
-        [
-          {
-            "node": "Load Config",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Webhook Healthcheck": {
-      "main": [
-        [
-          {
-            "node": "Healthcheck Response",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Load Config": {
       "main": [
         [
@@ -1541,101 +1217,72 @@
       "main": [
         [
           {
-            "node": "GS Ler Linhas",
+            "node": "DB Ler Cenários",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "GS Ler Linhas",
+            "node": "DB Ler Cenários",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "GS Adicionar CenÃ¡rio",
+            "node": "DB Criar Cenário",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "GS Ler para Editar",
+            "node": "DB Ler para Editar",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "GS Ler para Status",
+            "node": "DB Ler para Status",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "GS Ler para Deletar",
+            "node": "DB Ler para Deletar",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "GS Ler Funcionais IA",
+            "node": "DB Ler Funcionais IA",
             "type": "main",
             "index": 0
           },
           {
-            "node": "GS Ler Performance IA",
+            "node": "DB Ler Performance IA",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "HTTP Request Discord Status",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "GS Adicionar Cenario",
+            "node": "DB Criar Cenário",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "GS Ler Linhas": {
+    "DB Ler Cen?rios": {
       "main": [
         [
           {
             "node": "Roteador PÃ³s-Leitura",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Formatar CenÃ¡rio": {
-      "main": [
-        [
-          {
-            "node": "HTTP Request Discord Status1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "GS Adicionar CenÃ¡rio": {
-      "main": [
-        [
-          {
-            "node": "Preparar Prompt BDD IA",
             "type": "main",
             "index": 0
           }
@@ -1653,7 +1300,7 @@
         ]
       ]
     },
-    "GS Ler para Status": {
+    "DB Ler para Status": {
       "main": [
         [
           {
@@ -1668,14 +1315,14 @@
       "main": [
         [
           {
-            "node": "GS Atualizar Status",
+            "node": "DB Atualizar Status",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "GS Atualizar Status": {
+    "DB Atualizar Status": {
       "main": [
         [
           {
@@ -1697,7 +1344,7 @@
         ]
       ]
     },
-    "GS Ler para Editar": {
+    "DB Ler para Editar": {
       "main": [
         [
           {
@@ -1799,17 +1446,6 @@
         ]
       ]
     },
-    "Formatar Resposta IA": {
-      "main": [
-        [
-          {
-            "node": "HTTP Request",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "AI Agent": {
       "main": [
         [
@@ -1821,7 +1457,7 @@
         ]
       ]
     },
-    "GS Ler Funcionais IA": {
+    "DB Ler Funcionais IA": {
       "main": [
         [
           {
@@ -1832,7 +1468,7 @@
         ]
       ]
     },
-    "GS Ler Performance IA": {
+    "DB Ler Performance IA": {
       "main": [
         [
           {
@@ -1847,7 +1483,7 @@
       "main": [
         [
           {
-            "node": "Merge IA Sheets",
+            "node": "Merge IA Cenários",
             "type": "main",
             "index": 0
           }
@@ -1858,7 +1494,7 @@
       "main": [
         [
           {
-            "node": "Merge IA Sheets",
+            "node": "Merge IA Cenários",
             "type": "main",
             "index": 1
           }
@@ -1876,18 +1512,7 @@
         ]
       ]
     },
-    "HTTP Request Discord Status": {
-      "main": [
-        [
-          {
-            "node": "HTTP Request Discord Status1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "GS Ler para Deletar": {
+    "DB Ler para Deletar": {
       "main": [
         [
           {
@@ -1909,22 +1534,11 @@
         ]
       ]
     },
-    "Filtrar e Formatar Busca": {
-      "main": [
-        [
-          {
-            "node": "HTTP Request Discord Status1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Montar Gherkin BDD": {
       "main": [
         [
           {
-            "node": "Preparar Payload GitHub",
+            "node": "Preparar Prompt BDD IA",
             "type": "main",
             "index": 0
           }
@@ -1964,22 +1578,11 @@
         ]
       ]
     },
-    "Webhook Discord1": {
+    "Webhook": {
       "main": [
         [
           {
-            "node": "Load Config Secondary",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Normalizar Payload1": {
-      "main": [
-        [
-          {
-            "node": "Roteador Acao",
+            "node": "Load Config",
             "type": "main",
             "index": 0
           }
@@ -2041,33 +1644,11 @@
         ]
       ]
     },
-    "Webhook Next Status": {
-      "main": [
-        [
-          {
-            "node": "Load Config Secondary",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Webhook Next Created": {
-      "main": [
-        [
-          {
-            "node": "Resposta API Scenario Created",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Roteador SaÃ­da": {
       "main": [
         [
           {
-            "node": "HTTP Request Discord Status1",
+            "node": "Resposta Discord",
             "type": "main",
             "index": 0
           }
@@ -2103,17 +1684,6 @@
         ]
       ]
     },
-    "Load Config Secondary": {
-      "main": [
-        [
-          {
-            "node": "Normalizar Payload1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "GitHub Arquivo Existe?": {
       "main": [
         [
@@ -2143,11 +1713,22 @@
         ]
       ]
     },
-    "GS Adicionar Cenario": {
+    "DB Criar Cen?rio": {
       "main": [
         [
           {
-            "node": "Preparar Prompt BDD IA",
+            "node": "Montar Gherkin BDD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Discord": {
+      "main": [
+        [
+          {
+            "node": "Load Config",
             "type": "main",
             "index": 0
           }

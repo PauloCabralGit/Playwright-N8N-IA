@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   buildTenantWebhookUrl,
   createAccountAndTenant,
+  upsertTenantProfile,
   publishTenantWorkflow,
-  SESSION_COOKIE_NAME,
 } from '@/app/lib/tenant-auth';
+import { registerDiscordSlashCommands, resolveDiscordApplicationFromBotToken } from '@/app/lib/discord-bot';
 import type { N8nSettings } from '@/components/dashboard/types';
 
 type SignupBody = {
@@ -18,6 +19,11 @@ type SignupBody = {
   webhookPath: string;
   apiKey: string;
   discordWebhook?: string;
+  discordApplicationId: string;
+  discordPublicKey: string;
+  discordBotToken: string;
+  discordGuildId?: string;
+  discordCommandName?: string;
   githubOwner: string;
   githubRepo: string;
   githubBranch: string;
@@ -45,7 +51,7 @@ async function testWebhook(settings: Partial<N8nSettings>) {
     body: JSON.stringify({
       type: 'n8n_connection_test',
       settings,
-      source: 'qa-platform',
+      source: 'site',
       timestamp: new Date().toISOString(),
     }),
     cache: 'no-store',
@@ -67,7 +73,6 @@ export async function POST(request: NextRequest) {
       'address',
       'appPublicUrl',
       'webhookBaseUrl',
-      'webhookPath',
       'apiKey',
       'githubOwner',
       'githubRepo',
@@ -96,26 +101,54 @@ export async function POST(request: NextRequest) {
       address: body.address,
       appPublicUrl: body.appPublicUrl,
       webhookBaseUrl: body.webhookBaseUrl,
-      webhookPath: body.webhookPath,
+      webhookPath: body.webhookPath || '',
       apiKey: body.apiKey,
       discordWebhook: body.discordWebhook || '',
+      discordApplicationId: body.discordApplicationId,
+      discordPublicKey: body.discordPublicKey,
+      discordBotToken: body.discordBotToken,
+      discordGuildId: body.discordGuildId || '',
+      discordCommandName: body.discordCommandName || 'qa',
       githubOwner: body.githubOwner,
       githubRepo: body.githubRepo,
       githubBranch: body.githubBranch,
       githubToken: body.githubToken,
     });
 
-    const webhookUrl = buildTenantWebhookUrl(body.webhookBaseUrl, body.webhookPath);
+    try {
+      if (signupResult.tenant.discordBotToken) {
+        const resolvedDiscord = await resolveDiscordApplicationFromBotToken(signupResult.tenant.discordBotToken);
+        if (resolvedDiscord.applicationId || resolvedDiscord.publicKey) {
+          signupResult.tenant.discordApplicationId = resolvedDiscord.applicationId || signupResult.tenant.discordApplicationId;
+          signupResult.tenant.discordPublicKey = resolvedDiscord.publicKey || signupResult.tenant.discordPublicKey;
+          await upsertTenantProfile(signupResult.tenant);
+        }
+      }
+    } catch (error) {
+      console.warn('Unable to resolve Discord application during signup:', error);
+    }
 
-    const published = await publishTenantWorkflow(signupResult.account.tenantId);
-    const testResult = await testWebhook({
-      ...signupResult.tenant,
-      webhookUrl,
-    });
+    const webhookUrl = buildTenantWebhookUrl(body.webhookBaseUrl);
 
-    const response = NextResponse.json(
+    let publishedWorkflow: Awaited<ReturnType<typeof publishTenantWorkflow>> | null = null;
+    let testResult: Awaited<ReturnType<typeof testWebhook>> | null = null;
+
+    try {
+      publishedWorkflow = await publishTenantWorkflow(signupResult.account.tenantId);
+      await registerDiscordSlashCommands(signupResult.tenant);
+      testResult = await testWebhook({
+        ...signupResult.tenant,
+        webhookUrl,
+        tenantId: signupResult.account.tenantId,
+        tenantSlug: signupResult.tenant.slug,
+      });
+    } catch (error) {
+      console.error('Signup post-processing failed:', error);
+    }
+
+    return NextResponse.json(
       {
-        ok: testResult.ok,
+        ok: true,
         account: {
           id: signupResult.account.id,
           email: signupResult.account.email,
@@ -127,26 +160,30 @@ export async function POST(request: NextRequest) {
         tenant: {
           ...signupResult.tenant,
           webhookUrl,
-          workflowPublishedAt: published.tenant.workflowPublishedAt,
-          workflowDownloadUrl: published.workflowDownloadUrl,
+          workflowPublishedAt: publishedWorkflow?.tenant.workflowPublishedAt || signupResult.tenant.workflowPublishedAt || '',
+          workflowDownloadUrl: publishedWorkflow?.workflowDownloadUrl || signupResult.tenant.workflowDownloadUrl || '',
         },
-        workflowDownloadUrl: published.workflowDownloadUrl,
-        test: testResult.data,
+        workflowDownloadUrl: publishedWorkflow?.workflowDownloadUrl || signupResult.tenant.workflowDownloadUrl || '',
+        test: testResult?.data || null,
+        warnings:
+          testResult && !testResult.ok
+            ? ['Conta criada, mas o teste do webhook falhou. Você ainda pode fazer login e revisar as integrações.']
+            : [],
       },
-      testResult.ok ? { status: 201 } : { status: testResult.status || 400 }
+      { status: 201 }
     );
-
-    if (testResult.ok) {
-      response.cookies.set(SESSION_COOKIE_NAME, signupResult.sessionToken, {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-      });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Já existe uma conta com esse e-mail.')) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: 'EMAIL_EXISTS',
+          error: 'Esse e-mail já está cadastrado. Faça login para continuar.',
+        },
+        { status: 409 }
+      );
     }
 
-    return response;
-  } catch (error) {
     const message = error instanceof Error ? error.message : 'Erro desconhecido ao criar conta.';
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

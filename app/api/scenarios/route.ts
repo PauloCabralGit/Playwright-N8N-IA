@@ -240,10 +240,15 @@ export async function POST(request: NextRequest) {
         throw new Error('Webhook URL inválida ou ausente no payload atual.');
       }
 
+      const discordWebhook = (await getN8nConfig(request, tenant?.id)).discordWebhook || '';
       result.n8n = await callN8n(webhookUrl, {
         action: 'scenario_created',
         scenario,
         github: result.github || null,
+        tenantId: tenant?.id || '',
+        tenantSlug: tenant?.slug || '',
+        discordWebhook,
+        source: 'site',
       });
     }
 

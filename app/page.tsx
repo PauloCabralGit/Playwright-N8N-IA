@@ -1,32 +1,24 @@
 ﻿'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AlertCircle,
-  ArrowUpRight,
   Bot,
-  CheckCircle2,
-  ChevronRight,
-  Clock3,
   Database,
   FileText,
-  Filter,
   GitBranch,
   KanbanSquare,
   Layers3,
   LayoutDashboard,
   Plus,
   LogOut,
-  Search,
   Settings,
   ShieldCheck,
   Sparkles,
-  Wand2,
 } from 'lucide-react';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -41,7 +33,7 @@ import { AutomationSection } from '@/components/dashboard/AutomationSection';
 import { IntegrationsSection } from '@/components/dashboard/IntegrationsSection';
 import { SettingsSection } from '@/components/dashboard/SettingsSection';
 import { cn } from '@/lib/utils';
-import type { ColumnId, DeliveryCard, CreateFormState, SectionSettings, SyncStatus, Scenario, PanelId, N8nSettings } from '@/components/dashboard/types';
+import type { ColumnId, DeliveryCard, Scenario, PanelId, N8nSettings } from '@/components/dashboard/types';
 
 const columns: { id: ColumnId; title: string; hint: string }[] = [
   { id: 'discovery', title: 'Discovery', hint: 'Ideias e entendimento de negócio' },
@@ -131,6 +123,11 @@ type AuthTenant = {
   webhookUrl?: string;
   apiKey?: string;
   discordWebhook?: string;
+  discordApplicationId?: string;
+  discordPublicKey?: string;
+  discordBotToken?: string;
+  discordGuildId?: string;
+  discordCommandName?: string;
   githubOwner?: string;
   githubRepo?: string;
   githubBranch?: string;
@@ -174,54 +171,6 @@ function ScenarioBadge({ source }: { source: Scenario['source'] }) {
   );
 }
 
-function DeliveryBoardCard({
-  card,
-  onOpen,
-}: {
-  card: DeliveryCard;
-  onOpen: (id: string) => void;
-}) {
-  return (
-    <motion.div whileHover={{ y: -4, scale: 1.01 }} transition={{ duration: 0.16 }}>
-      <Card className="mx-auto w-full max-w-[320px] rounded-[26px] border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.14),rgba(255,255,255,0.08))] backdrop-blur-2xl shadow-[0_20px_60px_-30px_rgba(15,23,42,0.95)] hover:border-fuchsia-400/30 transition-all">
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.22em] text-fuchsia-200/80">{card.epic}</div>
-              <div className="mt-1 text-[15px] font-semibold leading-5 text-white">{card.title}</div>
-              <div className="mt-1 text-xs text-slate-400">
-                {card.id} • {card.module}
-              </div>
-            </div>
-            <Badge className="rounded-full bg-white/10 text-white border-0">{card.priority}</Badge>
-          </div>
-
-          <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
-            <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Objetivo</div>
-            <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-200">{card.businessGoal}</p>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Badge variant="outline" className="rounded-full border-white/10 text-slate-200">
-              {card.scenarios.length} cenários
-            </Badge>
-            <Badge variant="outline" className="rounded-full border-white/10 text-slate-200">
-              {card.owner}
-            </Badge>
-          </div>
-
-          <div className="mt-4 flex items-center justify-between">
-            <div className="text-xs text-slate-400">{card.acceptanceCriteria.length} critérios</div>
-            <Button onClick={() => onOpen(card.id)} className="rounded-2xl bg-white text-slate-950 hover:bg-slate-100">
-              Abrir
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
-}
-
 export default function Page() {
   const router = useRouter();
   const [cards, setCards] = useState<DeliveryCard[]>(initialCards);
@@ -259,6 +208,11 @@ export default function Page() {
     webhookUrl: '',
     apiKey: '',
     discordWebhook: '',
+    discordApplicationId: '',
+    discordPublicKey: '',
+    discordBotToken: '',
+    discordGuildId: '',
+    discordCommandName: 'qa',
     githubOwner: '',
     githubRepo: '',
     githubBranch: 'main',
@@ -280,6 +234,11 @@ export default function Page() {
     webhookUrl: '',
     apiKey: '',
     discordWebhook: '',
+    discordApplicationId: '',
+    discordPublicKey: '',
+    discordBotToken: '',
+    discordGuildId: '',
+    discordCommandName: 'qa',
     githubOwner: '',
     githubRepo: '',
     githubBranch: 'main',
@@ -294,8 +253,6 @@ export default function Page() {
   const [n8nConnectionVerified, setN8nConnectionVerified] = useState(false);
   const [n8nConnectionMessage, setN8nConnectionMessage] = useState('');
   const [hasUnsavedN8nSettings, setHasUnsavedN8nSettings] = useState(false);
-  const [appPublicUrl, setAppPublicUrl] = useState('');
-
   const clearAuthBootstrap = () => {
     if (typeof window === 'undefined') return;
 
@@ -322,6 +279,11 @@ export default function Page() {
       webhookUrl: tenant?.webhookUrl || '',
       apiKey: tenant?.apiKey || '',
       discordWebhook: tenant?.discordWebhook || '',
+      discordApplicationId: tenant?.discordApplicationId || '',
+      discordPublicKey: tenant?.discordPublicKey || '',
+      discordBotToken: tenant?.discordBotToken || '',
+      discordGuildId: tenant?.discordGuildId || '',
+      discordCommandName: tenant?.discordCommandName || 'qa',
       githubOwner: tenant?.githubOwner || '',
       githubRepo: tenant?.githubRepo || '',
       githubBranch: tenant?.githubBranch || 'main',
@@ -336,7 +298,6 @@ export default function Page() {
 
     setN8nSettings(nextSettings);
     setN8nDraftSettings(nextSettings);
-    setAppPublicUrl(nextSettings.appPublicUrl || '');
     setHasUnsavedN8nSettings(false);
     setN8nConnectionVerified(Boolean(nextSettings.workflowPublishedAt));
     setN8nConnectionMessage(
@@ -368,6 +329,9 @@ export default function Page() {
       { field: 'appPublicUrl', label: 'URL pública do app' },
       { field: 'webhookUrl', label: 'Webhook URL do n8n' },
       { field: 'apiKey', label: 'API Key do n8n' },
+      { field: 'discordApplicationId', label: 'Discord Application ID' },
+      { field: 'discordPublicKey', label: 'Discord Public Key' },
+      { field: 'discordBotToken', label: 'Discord Bot Token' },
       { field: 'githubOwner', label: 'GitHub Owner' },
       { field: 'githubRepo', label: 'GitHub Repo' },
       { field: 'githubBranch', label: 'GitHub Branch' },
@@ -425,6 +389,11 @@ export default function Page() {
       'webhookUrl',
       'apiKey',
       'discordWebhook',
+      'discordApplicationId',
+      'discordPublicKey',
+      'discordBotToken',
+      'discordGuildId',
+      'discordCommandName',
       'githubOwner',
       'githubRepo',
       'githubBranch',
@@ -434,38 +403,50 @@ export default function Page() {
     return fields.every((field) => String(left[field] || '').trim() === String(right[field] || '').trim());
   };
 
-  const markN8nDraftChanged = (nextSettings: N8nSettings) => {
+  const markN8nDraftChanged = useCallback((nextSettings: N8nSettings) => {
     setN8nDraftSettings(nextSettings);
     setHasUnsavedN8nSettings(!sameN8nSettings(nextSettings, n8nSettings));
     setN8nConnectionVerified(false);
     setN8nConnectionMessage('Configuração alterada. Teste a conexão novamente.');
-  };
+  }, [n8nSettings]);
+
+  const handleN8nSettingsSave = useCallback((nextSettings: N8nSettings) => {
+    setN8nSettings(nextSettings);
+    setN8nDraftSettings(nextSettings);
+    setHasUnsavedN8nSettings(false);
+    setN8nConnectionVerified(false);
+  }, []);
 
   const mergeN8nSettings = (primary: Partial<N8nSettings>, fallback?: Partial<N8nSettings>): N8nSettings => ({
-    companyName: primary.companyName || fallback?.companyName || '',
-    cnpj: primary.cnpj || fallback?.cnpj || '',
-    address: primary.address || fallback?.address || '',
-    appPublicUrl: primary.appPublicUrl || fallback?.appPublicUrl || '',
-    webhookBaseUrl: primary.webhookBaseUrl || fallback?.webhookBaseUrl || '',
-    webhookPath: primary.webhookPath || fallback?.webhookPath || '',
-    webhookUrl: primary.webhookUrl || fallback?.webhookUrl || '',
-    apiKey: primary.apiKey || fallback?.apiKey || '',
-    discordWebhook: primary.discordWebhook || fallback?.discordWebhook || '',
-    githubOwner: primary.githubOwner || fallback?.githubOwner || '',
-    githubRepo: primary.githubRepo || fallback?.githubRepo || '',
-    githubBranch: primary.githubBranch || fallback?.githubBranch || 'main',
-    githubToken: primary.githubToken || fallback?.githubToken || '',
-    tenantId: primary.tenantId || fallback?.tenantId || '',
-    tenantSlug: primary.tenantSlug || fallback?.tenantSlug || '',
-    workflowPublishedAt: primary.workflowPublishedAt || fallback?.workflowPublishedAt || '',
-    workflowDownloadUrl: primary.workflowDownloadUrl || fallback?.workflowDownloadUrl || '',
-    loadedAt: primary.loadedAt || fallback?.loadedAt || '',
-    updatedAt: primary.updatedAt || fallback?.updatedAt || '',
+    companyName: primary.companyName ?? fallback?.companyName ?? '',
+    cnpj: primary.cnpj ?? fallback?.cnpj ?? '',
+    address: primary.address ?? fallback?.address ?? '',
+    appPublicUrl: primary.appPublicUrl ?? fallback?.appPublicUrl ?? '',
+    webhookBaseUrl: primary.webhookBaseUrl ?? fallback?.webhookBaseUrl ?? '',
+    webhookPath: primary.webhookPath ?? fallback?.webhookPath ?? '',
+    webhookUrl: primary.webhookUrl ?? fallback?.webhookUrl ?? '',
+    apiKey: primary.apiKey ?? fallback?.apiKey ?? '',
+    discordWebhook: primary.discordWebhook ?? fallback?.discordWebhook ?? '',
+    discordApplicationId: primary.discordApplicationId ?? fallback?.discordApplicationId ?? '',
+    discordPublicKey: primary.discordPublicKey ?? fallback?.discordPublicKey ?? '',
+    discordBotToken: primary.discordBotToken ?? fallback?.discordBotToken ?? '',
+    discordGuildId: primary.discordGuildId ?? fallback?.discordGuildId ?? '',
+    discordCommandName: primary.discordCommandName ?? fallback?.discordCommandName ?? 'qa',
+    githubOwner: primary.githubOwner ?? fallback?.githubOwner ?? '',
+    githubRepo: primary.githubRepo ?? fallback?.githubRepo ?? '',
+    githubBranch: primary.githubBranch ?? fallback?.githubBranch ?? 'main',
+    githubToken: primary.githubToken ?? fallback?.githubToken ?? '',
+    tenantId: primary.tenantId ?? fallback?.tenantId ?? '',
+    tenantSlug: primary.tenantSlug ?? fallback?.tenantSlug ?? '',
+    workflowPublishedAt: primary.workflowPublishedAt ?? fallback?.workflowPublishedAt ?? '',
+    workflowDownloadUrl: primary.workflowDownloadUrl ?? fallback?.workflowDownloadUrl ?? '',
+    loadedAt: primary.loadedAt ?? fallback?.loadedAt ?? '',
+    updatedAt: primary.updatedAt ?? fallback?.updatedAt ?? '',
   });
 
-  const loadN8nSettings = async (tenantIdOverride?: string, fallbackSettings?: Partial<N8nSettings>) => {
+  const loadN8nSettings = useCallback(async (tenantIdOverride?: string, fallbackSettings?: Partial<N8nSettings>) => {
     try {
-      const tenantId = tenantIdOverride || currentAccount?.tenantId || currentTenant?.id || '';
+      const tenantId = tenantIdOverride || fallbackSettings?.tenantId || '';
       const tenantQuery = tenantId ? `?tenantId=${encodeURIComponent(tenantId)}` : '';
       const [settingsResponse, configResponse] = await Promise.all([
         fetch(`/api/settings/n8n${tenantQuery}`, { cache: 'no-store' }),
@@ -473,11 +454,6 @@ export default function Page() {
       ]);
 
       if (!settingsResponse.ok || !configResponse.ok) {
-        const nextSettings = mergeN8nSettings(fallbackSettings || n8nSettings, { tenantId, ...n8nSettings });
-
-        setN8nSettings(nextSettings);
-        setN8nDraftSettings(nextSettings);
-        setAppPublicUrl(nextSettings.appPublicUrl || '');
         return;
       }
 
@@ -495,6 +471,11 @@ export default function Page() {
           webhookUrl: config.webhookUrl || '',
           apiKey: config.apiKey || '',
           discordWebhook: config.discordWebhook || '',
+          discordApplicationId: config.discordApplicationId || '',
+          discordPublicKey: config.discordPublicKey || '',
+          discordBotToken: config.discordBotToken || '',
+          discordGuildId: config.discordGuildId || '',
+          discordCommandName: config.discordCommandName || 'qa',
           githubOwner: config.githubOwner || '',
           githubRepo: config.githubRepo || '',
           githubBranch: config.githubBranch || 'main',
@@ -506,14 +487,11 @@ export default function Page() {
           loadedAt: config.loadedAt || '',
           updatedAt: config.updatedAt || '',
         },
-        fallbackSettings || n8nSettings || {
-          tenantId,
-        }
+        fallbackSettings || { tenantId }
       );
 
       setN8nSettings(nextSettings);
       setN8nDraftSettings(nextSettings);
-      setAppPublicUrl(nextSettings.appPublicUrl || publicConfig.appPublicUrl || publicConfig.APP_PUBLIC_URL || '');
       setHasUnsavedN8nSettings(false);
       setN8nConnectionVerified(Boolean(nextSettings.workflowPublishedAt));
       setN8nConnectionMessage(
@@ -524,7 +502,7 @@ export default function Page() {
     } catch (error) {
       console.error('Failed to load n8n settings', error);
     }
-  };
+  }, []);
 
   const loadBoardCards = async () => {
     try {
@@ -594,7 +572,7 @@ export default function Page() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [loadN8nSettings]);
 
   useEffect(() => {
     if (authState === 'authenticated') {
@@ -604,7 +582,7 @@ export default function Page() {
       }
       void loadBoardCards();
     }
-  }, [authState, currentAccount?.tenantId, currentTenant?.id]);
+  }, [authState, currentAccount?.tenantId, currentTenant, loadN8nSettings]);
 
   useEffect(() => {
     if (authState === 'unauthenticated') {
@@ -632,58 +610,6 @@ export default function Page() {
       return;
     }
     setPanelOpen(true);
-  };
-
-  const handleAuthSuccess = (payload: {
-    account: AuthAccount;
-    tenant?: AuthTenant;
-  }) => {
-    if (typeof window !== 'undefined') {
-      try {
-        window.sessionStorage.setItem(
-          AUTH_BOOTSTRAP_STORAGE_KEY,
-          JSON.stringify({
-            account: payload.account,
-            tenant: payload.tenant || null,
-          } satisfies AuthBootstrap),
-        );
-      } catch (error) {
-        console.error('Failed to persist auth bootstrap', error);
-      }
-    }
-
-    setCurrentAccount(payload.account);
-    setCurrentTenant(payload.tenant || null);
-    setAuthState('authenticated');
-
-    const nextSettings = {
-      ...n8nSettings,
-      tenantId: payload.tenant?.id || payload.account.tenantId || n8nSettings.tenantId || '',
-      tenantSlug: payload.tenant?.slug || n8nSettings.tenantSlug || '',
-      companyName: payload.account.companyName || n8nSettings.companyName || '',
-      cnpj: payload.account.cnpj || n8nSettings.cnpj || '',
-      address: payload.account.address || n8nSettings.address || '',
-      appPublicUrl: payload.tenant?.appPublicUrl || n8nSettings.appPublicUrl,
-      webhookBaseUrl: payload.tenant?.webhookBaseUrl || n8nSettings.webhookBaseUrl || '',
-      webhookPath: payload.tenant?.webhookPath || n8nSettings.webhookPath || '',
-      webhookUrl: payload.tenant?.webhookUrl || n8nSettings.webhookUrl,
-      workflowPublishedAt: payload.tenant?.workflowPublishedAt || n8nSettings.workflowPublishedAt || '',
-      workflowDownloadUrl: payload.tenant?.workflowDownloadUrl || n8nSettings.workflowDownloadUrl || '',
-    };
-
-    setN8nSettings(nextSettings);
-    setN8nDraftSettings(nextSettings);
-    setAppPublicUrl(nextSettings.appPublicUrl || '');
-    setHasUnsavedN8nSettings(false);
-    setN8nConnectionVerified(Boolean(nextSettings.workflowPublishedAt));
-    setN8nConnectionMessage(
-      nextSettings.workflowPublishedAt
-        ? 'Workflow publicado para este tenant. Teste novamente quando alterar as integrações.'
-        : 'Clique em Testar conexão para validar o webhook.'
-    );
-    setAuthState('authenticated');
-
-    void loadN8nSettings(payload.account.tenantId, payload.tenant || undefined);
   };
 
   const handleLogout = async () => {
@@ -992,6 +918,24 @@ export default function Page() {
                   {syncMessage}
                 </div>
               )}
+
+              {currentAccount?.tenantId && !currentTenant && (
+                <div className="mt-4 rounded-2xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="mt-0.5 h-4 w-4 text-amber-300" />
+                    <div className="space-y-1">
+                      <div className="font-semibold">Tenant não encontrado no banco conectado</div>
+                      <div className="text-amber-100/80">
+                        A conta existe, mas a linha correspondente em <span className="font-semibold">tenants</span> não foi localizada.
+                        Os dados de integração dependem desse registro para aparecerem no front.
+                      </div>
+                      <div className="text-xs text-amber-100/70">
+                        Tenant ID: <span className="font-mono">{currentAccount.tenantId}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-3">
@@ -1093,8 +1037,6 @@ export default function Page() {
                 <ExecutiveSection
                   syncMessage={syncMessage}
                   syncStatus={syncStatus}
-                  search={search}
-                  setSearch={setSearch}
                   createOpen={createOpen}
                   setCreateOpen={setCreateOpen}
                   form={form}
@@ -1123,23 +1065,16 @@ export default function Page() {
                 <SettingsSection
                   settings={settings}
                   toggleSetting={toggleSetting}
+                  tenantData={currentTenant}
                   tenantId={currentAccount?.tenantId || currentTenant?.id || ''}
-                  appPublicUrl={appPublicUrl}
+                  tenantMissing={Boolean(currentAccount?.tenantId && !currentTenant)}
                   n8nSettings={n8nSettings}
-                  onN8nSettingsSave={(nextSettings) => {
-                    setN8nSettings(nextSettings);
-                    markN8nDraftChanged(nextSettings);
-                    setAppPublicUrl(nextSettings.appPublicUrl || '');
-                    setHasUnsavedN8nSettings(false);
-                    setN8nConnectionVerified(false);
-                  }}
+                  onN8nSettingsSave={handleN8nSettingsSave}
                   onN8nSettingsChange={markN8nDraftChanged}
                   onN8nConnectionTestResult={(ok, message) => {
                     setN8nConnectionVerified(ok);
                     setN8nConnectionMessage(message);
                   }}
-                  connectionVerified={n8nConnectionVerified}
-                  connectionMessage={n8nConnectionMessage}
                 />
               )}
             </DialogContent>

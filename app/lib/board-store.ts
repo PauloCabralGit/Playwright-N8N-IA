@@ -147,6 +147,13 @@ export async function setBoardCards(tenantId: string, cards: DeliveryCard[]) {
   return cloneCards(cards);
 }
 
+export async function deleteBoardCard(tenantId: string, cardId: string) {
+  const cards = await getBoardCards(tenantId);
+  const next = cards.filter((card: DeliveryCard) => card.id !== cardId);
+  await setBoardCards(tenantId, next);
+  return next;
+}
+
 export async function upsertBoardCard(tenantId: string, card: DeliveryCard) {
   const cards = await getBoardCards(tenantId);
   const index = cards.findIndex((item: DeliveryCard) => item.id === card.id);

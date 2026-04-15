@@ -1,6 +1,5 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { FileText, ShieldCheck } from 'lucide-react';
 import type { DeliveryCard, PanelId } from '../types';
 
 type CriteriaSectionProps = {

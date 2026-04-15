@@ -1,7 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { Plus, Search, Filter, Settings, Sparkles } from 'lucide-react';
+import { Plus, Settings, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
@@ -11,8 +10,6 @@ import type { CreateFormState, PanelId, SyncStatus } from '../types';
 type ExecutiveSectionProps = {
   syncMessage: string | null;
   syncStatus: SyncStatus;
-  search: string;
-  setSearch: (value: string) => void;
   createOpen: boolean;
   setCreateOpen: (open: boolean) => void;
   form: CreateFormState;
@@ -24,8 +21,6 @@ type ExecutiveSectionProps = {
 export function ExecutiveSection({
   syncMessage,
   syncStatus,
-  search,
-  setSearch,
   createOpen,
   setCreateOpen,
   form,
