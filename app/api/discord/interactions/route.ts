@@ -23,10 +23,10 @@ function pickDiscordContent(payload: Record<string, unknown> | null, status: num
     return status >= 400 ? `Falha ao processar a interação (${status}).` : 'Processado com sucesso.';
   }
 
-  const content =
-    (typeof payload.content === 'string' ? payload.content.trim() : '') ||
-    (typeof payload.message === 'string' ? payload.message.trim() : '') ||
-    (typeof payload.error === 'string' ? payload.error.trim() : '');
+  const contentFromContent = typeof payload.content === 'string' ? payload.content.trim() : '';
+  const contentFromMessage = typeof payload.message === 'string' ? payload.message.trim() : '';
+  const contentFromError = typeof payload.error === 'string' ? payload.error.trim() : '';
+  const content = contentFromContent || contentFromMessage || contentFromError;
 
   if (content) {
     return content;
