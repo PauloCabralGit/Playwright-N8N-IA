@@ -57,6 +57,10 @@ async function getPool() {
 }
 
 async function ensureSchema() {
+  if (process.env.ENABLE_RUNTIME_SCHEMA_MIGRATIONS !== 'true') {
+    return;
+  }
+
   const globalScope = globalThis as GlobalWithPool;
   if (globalScope.__qaPgSchemaVersion !== SCHEMA_VERSION) {
     globalScope.__qaPgSchemaReady = undefined;
