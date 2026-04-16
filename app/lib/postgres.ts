@@ -20,6 +20,40 @@ function getDatabaseUrl() {
   return url || '';
 }
 
+function describeConnectionString(connectionString: string) {
+  if (!connectionString) {
+    return {
+      present: false,
+      protocol: '',
+      hostname: '',
+      port: '',
+      database: '',
+      username: '',
+    };
+  }
+
+  try {
+    const parsed = new URL(connectionString);
+    return {
+      present: true,
+      protocol: parsed.protocol.replace(/:$/, ''),
+      hostname: parsed.hostname,
+      port: parsed.port,
+      database: parsed.pathname.replace(/^\/+/, ''),
+      username: parsed.username,
+    };
+  } catch {
+    return {
+      present: true,
+      protocol: 'unparseable',
+      hostname: '',
+      port: '',
+      database: '',
+      username: '',
+    };
+  }
+}
+
 async function resolveDatabaseUrl() {
   const localUrl = getDatabaseUrl();
   if (localUrl) {
@@ -218,4 +252,39 @@ export async function dbTransaction<T>(handler: (client: PoolClient) => Promise<
 
 export function requireDatabaseUrl() {
   return getDatabaseUrl();
+}
+
+export async function getDatabaseDiagnostics() {
+  const localUrl = getDatabaseUrl();
+  const diagnostics = {
+    source: localUrl ? 'env' : 'cloudflare',
+    envKeysPresent: {
+      CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: Boolean(
+        process.env.CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE,
+      ),
+      DATABASE_URL: Boolean(process.env.DATABASE_URL),
+      POSTGRES_URL: Boolean(process.env.POSTGRES_URL),
+      POSTGRES_CONNECTION_STRING: Boolean(process.env.POSTGRES_CONNECTION_STRING),
+      PG_CONNECTION_STRING: Boolean(process.env.PG_CONNECTION_STRING),
+    },
+    local: describeConnectionString(localUrl),
+    cloudflare: {
+      bindingPresent: false,
+      connection: describeConnectionString(''),
+      error: '',
+    },
+  };
+
+  try {
+    const { getCloudflareContext } = await import('@opennextjs/cloudflare');
+    const cloudflareContext = await getCloudflareContext({ async: true });
+    const binding = (cloudflareContext.env as { HYPERDRIVE?: { connectionString?: string } }).HYPERDRIVE;
+    const connectionString = String(binding?.connectionString || '').trim();
+    diagnostics.cloudflare.bindingPresent = Boolean(binding);
+    diagnostics.cloudflare.connection = describeConnectionString(connectionString);
+  } catch (error) {
+    diagnostics.cloudflare.error = error instanceof Error ? error.message : 'Unknown Cloudflare context error.';
+  }
+
+  return diagnostics;
 }
