@@ -1,4 +1,8 @@
+import path from "node:path";
 import type { NextConfig } from "next";
+
+const pgCloudflarePackagePath = require.resolve('pg-cloudflare/package.json');
+const pgCloudflareRuntimePath = path.join(path.dirname(pgCloudflarePackagePath), 'dist', 'index.js');
 
 const nextConfig: NextConfig = {
   transpilePackages: ['pg', 'pg-cloudflare'],
@@ -13,8 +17,8 @@ const nextConfig: NextConfig = {
       config.resolve = config.resolve || {};
       config.resolve.alias = {
         ...(config.resolve.alias || {}),
-        'pg-cloudflare': require.resolve('pg-cloudflare/dist/index.js'),
-        'pg-cloudflare/dist/empty.js': require.resolve('pg-cloudflare/dist/index.js'),
+        'pg-cloudflare': pgCloudflareRuntimePath,
+        'pg-cloudflare/dist/empty.js': pgCloudflareRuntimePath,
       };
     }
 
