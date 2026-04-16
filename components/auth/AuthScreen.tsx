@@ -171,7 +171,7 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
 
     setStatus('loading');
     setIssues([]);
-    setMessage('Criando conta e publicando workflow...');
+    setMessage('Criando conta...');
 
     try {
       const response = await fetch('/api/auth/signup', {
@@ -453,7 +453,7 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
                   onClick={handleSignup}
                   disabled={status === 'loading'}
                 >
-                  {status === 'loading' ? 'Criando conta...' : 'Criar conta e publicar workflow'}
+                  {status === 'loading' ? 'Criando conta...' : 'Criar conta'}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>

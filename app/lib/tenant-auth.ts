@@ -530,8 +530,7 @@ export async function authenticateAccount(email: string, password: string) {
         [token, account.id, now, now],
       );
 
-      const tenant = await getTenantByIdPublic(account.tenantId).catch(() => null);
-      return { account, sessionToken: token, tenant };
+      return { account, sessionToken: token, tenant: null };
     } catch (error) {
       const pgError = error as { code?: string };
       if (pgError?.code === '23505') {

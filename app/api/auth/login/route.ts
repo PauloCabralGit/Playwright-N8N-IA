@@ -7,8 +7,12 @@ type LoginBody = {
 };
 
 export async function POST(request: NextRequest) {
+  let stage = 'request:parse';
+
   try {
     const body = (await request.json()) as LoginBody;
+    stage = 'request:validate';
+
     const email = String(body.email || '').trim();
     const password = String(body.password || '').trim();
 
@@ -16,11 +20,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'E-mail e senha são obrigatórios.' }, { status: 400 });
     }
 
+    stage = 'account:authenticate';
     const result = await authenticateAccount(email, password);
     if (!result) {
       return NextResponse.json({ ok: false, error: 'Credenciais inválidas.' }, { status: 401 });
     }
 
+    stage = 'session:set-cookie';
     const response = NextResponse.json({
       ok: true,
       account: {
@@ -44,6 +50,7 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Erro desconhecido ao autenticar.';
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error('Login failed at stage:', stage, error);
+    return NextResponse.json({ ok: false, error: message, stage }, { status: 500 });
   }
 }
