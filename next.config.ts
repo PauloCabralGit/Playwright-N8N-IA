@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     resolveAlias: {
       'pg-cloudflare': 'pg-cloudflare/dist/index.js',
+      'pg-cloudflare/dist/empty.js': 'pg-cloudflare/dist/index.js',
     },
   },
 };
