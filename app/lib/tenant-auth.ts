@@ -83,6 +83,10 @@ function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
 }
 
+function safeTrim(value: string | null | undefined) {
+  return String(value || '').trim();
+}
+
 function normalizeWebhookPath(value: string) {
   return value
     .trim()
@@ -158,24 +162,24 @@ function defaultTenantSettings(input: SignupInput, tenantId: string, tenantSlug:
   return {
     id: tenantId,
     slug: tenantSlug,
-    companyName: input.companyName.trim(),
-    cnpj: input.cnpj.trim(),
-    address: input.address.trim(),
-    appPublicUrl: input.appPublicUrl.trim(),
-    webhookBaseUrl: input.webhookBaseUrl.trim().replace(/\/+$/, ''),
+    companyName: safeTrim(input.companyName),
+    cnpj: safeTrim(input.cnpj),
+    address: safeTrim(input.address),
+    appPublicUrl: safeTrim(input.appPublicUrl),
+    webhookBaseUrl: safeTrim(input.webhookBaseUrl).replace(/\/+$/, ''),
     webhookPath,
     webhookUrl: buildWebhookUrl(input.webhookBaseUrl, webhookPath),
-    apiKey: input.apiKey.trim(),
-    discordWebhook: input.discordWebhook.trim(),
-    discordApplicationId: input.discordApplicationId.trim(),
-    discordPublicKey: input.discordPublicKey.trim(),
-    discordBotToken: input.discordBotToken.trim(),
-    discordGuildId: input.discordGuildId.trim(),
+    apiKey: safeTrim(input.apiKey),
+    discordWebhook: safeTrim(input.discordWebhook),
+    discordApplicationId: safeTrim(input.discordApplicationId),
+    discordPublicKey: safeTrim(input.discordPublicKey),
+    discordBotToken: safeTrim(input.discordBotToken),
+    discordGuildId: safeTrim(input.discordGuildId),
     discordCommandName: normalizeDiscordCommandName(input.discordCommandName || 'qa'),
-    githubOwner: input.githubOwner.trim(),
-    githubRepo: input.githubRepo.trim(),
-    githubBranch: input.githubBranch.trim() || 'main',
-    githubToken: input.githubToken.trim(),
+    githubOwner: safeTrim(input.githubOwner),
+    githubRepo: safeTrim(input.githubRepo),
+    githubBranch: safeTrim(input.githubBranch) || 'main',
+    githubToken: safeTrim(input.githubToken),
     loadedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     createdAt: new Date().toISOString(),

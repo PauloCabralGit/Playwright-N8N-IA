@@ -20,8 +20,8 @@ type SignupBody = {
   webhookPath: string;
   apiKey: string;
   discordWebhook?: string;
-  discordApplicationId: string;
-  discordPublicKey: string;
+  discordApplicationId?: string;
+  discordPublicKey?: string;
   discordBotToken: string;
   discordGuildId?: string;
   discordCommandName?: string;
@@ -112,8 +112,8 @@ export async function POST(request: NextRequest) {
       webhookPath: body.webhookPath || '',
       apiKey: body.apiKey,
       discordWebhook: body.discordWebhook || '',
-      discordApplicationId: body.discordApplicationId,
-      discordPublicKey: body.discordPublicKey,
+      discordApplicationId: body.discordApplicationId || '',
+      discordPublicKey: body.discordPublicKey || '',
       discordBotToken: body.discordBotToken,
       discordGuildId: body.discordGuildId || '',
       discordCommandName: body.discordCommandName || 'qa',
