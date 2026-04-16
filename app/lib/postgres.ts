@@ -1,8 +1,6 @@
 import type { Client, QueryResult, QueryResultRow } from 'pg';
 
 type GlobalWithPostgres = typeof globalThis & {
-  __qaPgClient?: Promise<Client>;
-  __qaPgQueue?: Promise<void>;
   __qaPgSchemaReady?: Promise<void>;
   __qaPgSchemaVersion?: string;
 };
@@ -117,46 +115,6 @@ async function createClient() {
   });
   await client.connect();
   return client;
-}
-
-function resetSharedClient() {
-  const globalScope = globalThis as GlobalWithPostgres;
-  const clientPromise = globalScope.__qaPgClient;
-  globalScope.__qaPgClient = undefined;
-
-  if (clientPromise) {
-    void clientPromise
-      .then((client) => client.end().catch(() => {}))
-      .catch(() => {});
-  }
-}
-
-async function runWithDatabaseLock<T>(operation: () => Promise<T>) {
-  const globalScope = globalThis as GlobalWithPostgres;
-  const previous = globalScope.__qaPgQueue || Promise.resolve();
-
-  let release!: () => void;
-  globalScope.__qaPgQueue = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-
-  await previous.catch(() => {});
-
-  try {
-    return await operation();
-  } finally {
-    release();
-  }
-}
-
-async function getSharedClient() {
-  const globalScope = globalThis as GlobalWithPostgres;
-
-  if (!globalScope.__qaPgClient) {
-    globalScope.__qaPgClient = createClient();
-  }
-
-  return globalScope.__qaPgClient;
 }
 
 async function ensureSchema() {
@@ -293,38 +251,32 @@ export async function dbQuery<T extends QueryResultRow = QueryResultRow>(
   values: unknown[] = [],
 ): Promise<QueryResult<T>> {
   await ensureSchema();
-
-  return runWithDatabaseLock(async () => {
-    const client = await getSharedClient();
-    try {
-      return await client.query<T>(text, values);
-    } catch (error) {
-      resetSharedClient();
-      throw error;
-    }
-  });
+  const client = await createClient();
+  try {
+    return await client.query<T>(text, values);
+  } finally {
+    await client.end().catch(() => {});
+  }
 }
 
 export async function dbTransaction<T>(handler: (client: Client) => Promise<T>): Promise<T> {
   await ensureSchema();
-
-  return runWithDatabaseLock(async () => {
-    const client = await getSharedClient();
+  const client = await createClient();
+  try {
+    await client.query('BEGIN');
+    const result = await handler(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
     try {
-      await client.query('BEGIN');
-      const result = await handler(client);
-      await client.query('COMMIT');
-      return result;
-    } catch (error) {
-      try {
-        await client.query('ROLLBACK');
-      } catch {
-        // ignore rollback errors
-      }
-      resetSharedClient();
-      throw error;
+      await client.query('ROLLBACK');
+    } catch {
+      // ignore rollback errors
     }
-  });
+    throw error;
+  } finally {
+    await client.end().catch(() => {});
+  }
 }
 
 export function requireDatabaseUrl() {
