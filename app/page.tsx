@@ -545,6 +545,9 @@ export default function Page() {
         if (!mounted) return;
 
         if (!response.ok) {
+          if (authState === 'authenticated') {
+            return;
+          }
           setAuthState('unauthenticated');
           return;
         }
@@ -556,9 +559,12 @@ export default function Page() {
         setCurrentTenant((prev) => data.tenant || prev || null);
         setAuthState('authenticated');
 
-        } catch (error) {
-          if (!mounted) return;
-          console.error('Failed to load auth state', error);
+      } catch (error) {
+        if (!mounted) return;
+        console.error('Failed to load auth state', error);
+        if (authState === 'authenticated') {
+          return;
+        }
         clearAuthBootstrap();
         setAuthState('unauthenticated');
       }
@@ -569,7 +575,7 @@ export default function Page() {
     return () => {
       mounted = false;
     };
-  }, [loadN8nSettings]);
+  }, [authState, loadN8nSettings]);
 
   useEffect(() => {
     if (authState === 'authenticated') {

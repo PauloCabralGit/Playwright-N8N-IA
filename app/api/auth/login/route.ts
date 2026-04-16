@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     stage = 'request:validate';
 
     const email = String(body.email || '').trim();
-    const password = String(body.password || '').trim();
+    const password = String(body.password || '');
 
     if (!email || !password) {
       return NextResponse.json({ ok: false, error: 'E-mail e senha são obrigatórios.' }, { status: 400 });
