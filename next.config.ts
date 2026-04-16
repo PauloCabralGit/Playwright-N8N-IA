@@ -1,15 +1,14 @@
 import path from "node:path";
 import type { NextConfig } from "next";
 
-const pgCloudflarePackagePath = require.resolve('pg-cloudflare/package.json');
-const pgCloudflareRuntimePath = path.join(path.dirname(pgCloudflarePackagePath), 'dist', 'index.js');
+const pgCloudflareShimPath = path.join(process.cwd(), 'app', 'lib', 'cloudflare', 'pg-cloudflare-shim.ts');
 
 const nextConfig: NextConfig = {
   transpilePackages: ['pg', 'pg-cloudflare'],
   turbopack: {
     resolveAlias: {
-      'pg-cloudflare': 'pg-cloudflare/dist/index.js',
-      'pg-cloudflare/dist/empty.js': 'pg-cloudflare/dist/index.js',
+      'pg-cloudflare': pgCloudflareShimPath,
+      'pg-cloudflare/dist/empty.js': pgCloudflareShimPath,
     },
   },
   webpack: (config, { isServer }) => {
@@ -20,8 +19,8 @@ const nextConfig: NextConfig = {
       );
       config.resolve.alias = {
         ...(config.resolve.alias || {}),
-        'pg-cloudflare': pgCloudflareRuntimePath,
-        'pg-cloudflare/dist/empty.js': pgCloudflareRuntimePath,
+        'pg-cloudflare': pgCloudflareShimPath,
+        'pg-cloudflare/dist/empty.js': pgCloudflareShimPath,
       };
       config.externals = config.externals || [];
       config.externals.push(({ request }: { request?: string }, callback: (error?: Error | null, result?: string) => void) => {
