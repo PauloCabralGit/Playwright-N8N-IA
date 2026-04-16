@@ -3,6 +3,8 @@ import { getN8nConfig, getN8nWebhookUrl } from '@/app/lib/n8n-config';
 import { getCurrentTenant } from '@/app/lib/tenant-auth';
 import { addScenarioToBoardCard } from '@/app/lib/board-store';
 
+const GITHUB_USER_AGENT = 'orionsystem-cloudflare-worker';
+
 export type ScenarioStatus = 'Backlog' | 'Ready' | 'In Progress' | 'Review' | 'Done';
 export type ScenarioCategory = 'Funcional' | 'Performance';
 
@@ -123,6 +125,7 @@ async function saveFeatureToGitHub(scenario: ScenarioDTO) {
       Accept: 'application/vnd.github+json',
       Authorization: `Bearer ${token}`,
       'X-GitHub-Api-Version': '2022-11-28',
+      'User-Agent': GITHUB_USER_AGENT,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({

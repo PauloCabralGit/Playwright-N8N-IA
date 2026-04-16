@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { N8nSettings } from '@/components/dashboard/types';
 import { buildTenantWebhookUrl } from '@/app/lib/tenant-auth';
 
+const GITHUB_USER_AGENT = 'orionsystem-cloudflare-worker';
+
 type TestRequestBody = {
   settings?: Partial<N8nSettings>;
   tenantId?: string;
@@ -78,6 +80,7 @@ async function validateGitHubAccess(settings: Partial<N8nSettings>) {
       Accept: 'application/vnd.github+json',
       Authorization: `Bearer ${token}`,
       'X-GitHub-Api-Version': '2022-11-28',
+      'User-Agent': GITHUB_USER_AGENT,
     },
     cache: 'no-store',
   });
