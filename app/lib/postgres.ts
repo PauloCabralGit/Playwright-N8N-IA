@@ -73,6 +73,26 @@ async function resolveDatabaseUrl() {
   throw new Error('DATABASE_URL is required to use Postgres persistence.');
 }
 
+function shouldUseSsl(connectionString: string) {
+  if (!connectionString) return false;
+
+  try {
+    const parsed = new URL(connectionString);
+    const hostname = parsed.hostname.toLowerCase();
+    const isHyperdrive =
+      hostname.endsWith('.hyperdrive.local') ||
+      hostname === 'hyperdrive.local';
+
+    if (isHyperdrive) {
+      return false;
+    }
+  } catch {
+    // Fall through to default behavior below.
+  }
+
+  return process.env.NODE_ENV === 'production';
+}
+
 async function loadClientConstructor() {
   const pgModule = await import('pg');
   const candidate =
@@ -91,7 +111,7 @@ async function createClient() {
   const ClientConstructor = await loadClientConstructor();
   const client = new ClientConstructor({
     connectionString,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+    ssl: shouldUseSsl(connectionString) ? { rejectUnauthorized: false } : undefined,
   });
   await client.connect();
   return client;
