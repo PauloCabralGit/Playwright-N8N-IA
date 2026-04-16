@@ -33,7 +33,7 @@ import { AutomationSection } from '@/components/dashboard/AutomationSection';
 import { IntegrationsSection } from '@/components/dashboard/IntegrationsSection';
 import { SettingsSection } from '@/components/dashboard/SettingsSection';
 import { cn } from '@/lib/utils';
-import type { ColumnId, DeliveryCard, Scenario, PanelId, N8nSettings } from '@/components/dashboard/types';
+import type { ColumnId, DeliveryCard, N8nSettings, PanelId, Scenario, TeamMember } from '@/components/dashboard/types';
 
 const columns: { id: ColumnId; title: string; hint: string }[] = [
   { id: 'discovery', title: 'Discovery', hint: 'Ideias e entendimento de negócio' },
@@ -145,6 +145,20 @@ type AuthBootstrap = {
 
 const AUTH_BOOTSTRAP_STORAGE_KEY = 'qa_auth_bootstrap';
 
+function createDefaultExecution(estimatedMinutes = 10) {
+  return {
+    estimatedMinutes,
+    actualMinutes: 0,
+    status: 'Not Run' as const,
+    notes: '',
+    executedBy: '',
+    evidences: [] as string[],
+    bugSource: 'None' as const,
+    bugTitle: '',
+    bugDescription: '',
+  };
+}
+
 function StatCard({ title, value, subtitle, glow }: { title: string; value: string | number; subtitle: string; glow: string }) {
   return (
     <Card className="relative overflow-hidden rounded-[28px] border-white/10 bg-white/10 backdrop-blur-2xl shadow-[0_25px_80px_-35px_rgba(15,23,42,0.9)]">
@@ -193,6 +207,7 @@ export default function Page() {
   const [authState, setAuthState] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
   const [currentAccount, setCurrentAccount] = useState<AuthAccount | null>(null);
   const [currentTenant, setCurrentTenant] = useState<AuthTenant | null>(null);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [settings, setSettings] = useState({
     autoSync: true,
     aiSuggestions: true,
@@ -504,6 +519,35 @@ export default function Page() {
     }
   }, []);
 
+  const loadTeamMembers = useCallback(async () => {
+    try {
+      const response = await fetch('/api/auth/members', {
+        cache: 'no-store',
+        credentials: 'same-origin',
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const data = await response.json();
+      if (Array.isArray(data?.items)) {
+        setTeamMembers(data.items);
+      }
+    } catch (error) {
+      console.error('Failed to load team members', error);
+    }
+  }, []);
+
+  const normalizeCardForUi = useCallback((card: DeliveryCard): DeliveryCard => ({
+    ...card,
+    estimatedExecutionMinutes: card.estimatedExecutionMinutes || 0,
+    scenarios: (card.scenarios || []).map((scenario) => ({
+      ...scenario,
+      execution: scenario.execution || createDefaultExecution(10),
+    })),
+  }), []);
+
   const loadBoardCards = async () => {
     try {
       const response = await fetch('/api/board/cards', { cache: 'no-store' });
@@ -511,10 +555,11 @@ export default function Page() {
 
       const data = await response.json();
       if (Array.isArray(data?.items) && data.items.length > 0) {
-        setCards(data.items);
+        const nextCards = data.items.map(normalizeCardForUi);
+        setCards(nextCards);
         setSelectedId((prev) => {
-          const found = data.items.find((card: DeliveryCard) => card.id === prev);
-          return found ? prev : data.items[0].id;
+          const found = nextCards.find((card: DeliveryCard) => card.id === prev);
+          return found ? prev : nextCards[0].id;
         });
       }
     } catch (error) {
@@ -563,6 +608,7 @@ export default function Page() {
         setCurrentAccount(data.account || null);
         setCurrentTenant((prev) => data.tenant || prev || null);
         setAuthState('authenticated');
+        void loadTeamMembers();
 
       } catch (error) {
         if (!mounted) return;
@@ -580,7 +626,7 @@ export default function Page() {
     return () => {
       mounted = false;
     };
-  }, [authState, loadN8nSettings]);
+  }, [authState, loadN8nSettings, loadTeamMembers]);
 
   useEffect(() => {
     if (authState === 'authenticated') {
@@ -588,9 +634,10 @@ export default function Page() {
       if (tenantToLoad) {
         void loadN8nSettings(tenantToLoad, currentTenant || undefined);
       }
+      void loadTeamMembers();
       void loadBoardCards();
     }
-  }, [authState, currentAccount?.tenantId, currentTenant, loadN8nSettings]);
+  }, [authState, currentAccount?.tenantId, currentTenant, loadN8nSettings, loadTeamMembers]);
 
   useEffect(() => {
     if (authState === 'unauthenticated') {
@@ -639,6 +686,26 @@ export default function Page() {
   const syncSelectedCard = () => {
     syncWithN8n(selectedCard, 'update');
     handleSidebarClick('integrations');
+  };
+
+  const persistBoardCard = async (card: DeliveryCard, action: 'create' | 'update' = 'update') => {
+    const normalizedCard = normalizeCardForUi(card);
+
+    setCards((prev) => prev.map((item) => (item.id === normalizedCard.id ? normalizedCard : item)));
+
+    try {
+      await fetch('/api/board/cards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ card: normalizedCard }),
+      });
+    } catch (error) {
+      console.error('Failed to persist board card', error);
+    }
+
+    if (action === 'create' || action === 'update') {
+      void syncWithN8n(normalizedCard, action);
+    }
   };
 
   const syncWithN8n = async (card: DeliveryCard, action: 'create' | 'move' | 'update') => {
@@ -708,6 +775,54 @@ export default function Page() {
     }
   };
 
+  const handleCardChange = (card: DeliveryCard) => {
+    void persistBoardCard(card, 'update');
+  };
+
+  const handleScenarioChange = (scenarioId: string, patch: Partial<Scenario>) => {
+    const updatedCard = {
+      ...selectedCard,
+      scenarios: selectedCard.scenarios.map((scenario) =>
+        scenario.id === scenarioId
+          ? {
+              ...scenario,
+              ...patch,
+              execution: patch.execution
+                ? {
+                    ...(scenario.execution || createDefaultExecution()),
+                    ...patch.execution,
+                  }
+                : scenario.execution,
+            }
+          : scenario,
+      ),
+    };
+
+    void persistBoardCard(updatedCard, 'update');
+  };
+
+  const handleAddScenario = () => {
+    const scenario: Scenario = {
+      id: `CT-MAN-${Math.floor(Math.random() * 900 + 100)}`,
+      title: `Manual scenario for ${selectedCard.title}`,
+      source: 'Manual',
+      status: 'Draft',
+      objective: '',
+      steps: '',
+      expectedResult: '',
+      category: 'Funcional',
+      owner: selectedCard.owner,
+      execution: createDefaultExecution(10),
+    };
+
+    const updatedCard = {
+      ...selectedCard,
+      scenarios: [scenario, ...selectedCard.scenarios],
+    };
+
+    void persistBoardCard(updatedCard, 'update');
+  };
+
   const selectedCard = useMemo(
     () => cards.find((card) => card.id === selectedId) || cards[0],
     [cards, selectedId]
@@ -715,7 +830,16 @@ export default function Page() {
 
   const filteredCards = useMemo(() => {
     return cards.filter((card) => {
-      const text = [card.id, card.title, card.epic, card.module, card.businessGoal]
+      const text = [
+        card.id,
+        card.title,
+        card.epic,
+        card.module,
+        card.businessGoal,
+        card.owner,
+        card.acceptanceCriteria.join(' '),
+        card.scenarios.map((scenario) => scenario.title).join(' '),
+      ]
         .join(' ')
         .toLowerCase();
       return text.includes(search.toLowerCase());
@@ -754,9 +878,11 @@ export default function Page() {
       module: form.module || 'Geral',
       column: acceptanceCriteria.length ? 'qa' : 'refinement',
       priority: 'Média',
-      owner: 'Paulo',
+      owner: teamMembers[0]?.name || currentAccount?.companyName || 'Responsavel pendente',
+      ownerId: teamMembers[0]?.id || '',
       businessGoal: form.businessGoal || 'Sem objetivo informado.',
       acceptanceCriteria,
+      estimatedExecutionMinutes: Math.max(acceptanceCriteria.length * 10, 15),
       qaNotes: form.qaNotes,
       scenarios: acceptanceCriteria.length
         ? [
@@ -765,6 +891,9 @@ export default function Page() {
               title: `AI scenario draft for ${form.title || 'new delivery'}`,
               source: 'IA',
               status: 'Draft',
+              objective: form.businessGoal || '',
+              expectedResult: acceptanceCriteria.join('\n'),
+              execution: createDefaultExecution(10),
             },
           ]
         : [],
@@ -772,11 +901,12 @@ export default function Page() {
 
     setCards((prev) => [newCard, ...prev]);
     setSelectedId(newCard.id);
+    setActiveSection('qa');
+    setPanelOpen(true);
     setCreateOpen(false);
     setForm({ epic: '', title: '', module: '', businessGoal: '', acceptanceCriteria: '', qaNotes: '' });
 
-    // Call API to sync with n8n
-    syncWithN8n(newCard, 'create');
+    void persistBoardCard(newCard, 'create');
   };
 
   const generateAiScenario = () => {
@@ -788,24 +918,24 @@ export default function Page() {
       return;
     }
 
-    setCards((prev) =>
-      prev.map((card) =>
-        card.id === selectedCard.id
-          ? {
-              ...card,
-              scenarios: [
-                {
-                  id: `CT-AI-${Math.floor(Math.random() * 900 + 100)}`,
-                  title: `Automated scenario suggestion for ${card.title}`,
-                  source: 'IA',
-                  status: 'Ready',
-                },
-                ...card.scenarios,
-              ],
-            }
-          : card
-      )
-    );
+    const updatedCard = {
+      ...selectedCard,
+      scenarios: [
+        {
+          id: `CT-AI-${Math.floor(Math.random() * 900 + 100)}`,
+          title: `Automated scenario suggestion for ${selectedCard.title}`,
+          source: 'IA' as const,
+          status: 'Ready' as const,
+          objective: selectedCard.businessGoal,
+          expectedResult: selectedCard.acceptanceCriteria.join('\n'),
+          owner: selectedCard.owner,
+          execution: createDefaultExecution(12),
+        },
+        ...selectedCard.scenarios,
+      ],
+    };
+
+    void persistBoardCard(updatedCard, 'update');
 
     // Call n8n to generate AI scenario
     generateAiWithN8n(selectedCard);
@@ -820,16 +950,10 @@ export default function Page() {
       return;
     }
 
-    setCards((prev) =>
-      prev.map((card) =>
-        card.id === cardId ? { ...card, column: newColumn } : card
-      )
-    );
-
-    // Sync with n8n
-    const card = cards.find(c => c.id === cardId);
+    const card = cards.find((item) => item.id === cardId);
     if (card) {
-      syncWithN8n({ ...card, column: newColumn }, 'move');
+      setCards((prev) => prev.map((item) => (item.id === cardId ? { ...item, column: newColumn } : item)));
+      void syncWithN8n({ ...card, column: newColumn }, 'move');
     }
   };
 
@@ -1036,6 +1160,9 @@ export default function Page() {
               setSearch={setSearch}
               setSelectedId={setSelectedId}
               setDetailOpen={setDetailOpen}
+              setActiveSection={setActiveSection}
+              setPanelOpen={setPanelOpen}
+              moveCard={moveCard}
             />
           </div>
 
@@ -1063,7 +1190,17 @@ export default function Page() {
                 />
               )}
 
-              {activeSection === 'qa' && <QaSection selectedCard={selectedCard} moveCard={moveCard} />}
+              {activeSection === 'qa' && (
+                <QaSection
+                  selectedCard={selectedCard}
+                  teamMembers={teamMembers}
+                  moveCard={moveCard}
+                  generateAiScenario={generateAiScenario}
+                  onCardChange={handleCardChange}
+                  onScenarioChange={handleScenarioChange}
+                  onAddScenario={handleAddScenario}
+                />
+              )}
 
               {activeSection === 'automation' && <AutomationSection totalAi={totalAi} generateAiScenario={generateAiScenario} />}
 

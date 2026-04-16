@@ -2,6 +2,18 @@ import type { ColumnId, DeliveryCard, Scenario } from '@/components/dashboard/ty
 import { randomUUID } from 'crypto';
 import { dbQuery } from '@/app/lib/postgres';
 
+const baseExecution = (estimatedMinutes = 10) => ({
+  estimatedMinutes,
+  actualMinutes: 0,
+  status: 'Not Run' as const,
+  notes: '',
+  executedBy: '',
+  evidences: [] as string[],
+  bugSource: 'None' as const,
+  bugTitle: '',
+  bugDescription: '',
+});
+
 const SEED_CARDS: DeliveryCard[] = [
   {
     id: 'DEL-201',
@@ -11,17 +23,35 @@ const SEED_CARDS: DeliveryCard[] = [
     column: 'qa',
     priority: 'Alta',
     owner: 'Paulo',
+    ownerId: 'seed-paulo',
     businessGoal:
       'Permitir que o time comercial visualize rapidamente os dados do lead sem sair do fluxo principal de atendimento.',
     acceptanceCriteria: [
-      'Usuário autenticado deve conseguir pesquisar um lead por identificador.',
+      'Usuario autenticado deve conseguir pesquisar um lead por identificador.',
       'O sistema deve exibir nome, telefone, status e origem do lead.',
-      'Quando o lead não existir, a interface deve mostrar mensagem clara sem quebrar o fluxo.',
+      'Quando o lead nao existir, a interface deve mostrar mensagem clara sem quebrar o fluxo.',
     ],
+    estimatedExecutionMinutes: 35,
     qaNotes: 'Validar interface, API e comportamento para lead inexistente.',
     scenarios: [
-      { id: 'CT-FUNC-21', title: 'Display lead data for a valid identifier', source: 'IA', status: 'Ready' },
-      { id: 'CT-FUNC-22', title: 'Show graceful message when lead is not found', source: 'Manual', status: 'Draft' },
+      {
+        id: 'CT-FUNC-21',
+        title: 'Display lead data for a valid identifier',
+        source: 'IA',
+        status: 'Ready',
+        objective: 'Garantir que a consulta apresente os dados principais do lead.',
+        expectedResult: 'Nome, telefone e origem sao exibidos corretamente.',
+        execution: baseExecution(10),
+      },
+      {
+        id: 'CT-FUNC-22',
+        title: 'Show graceful message when lead is not found',
+        source: 'Manual',
+        status: 'Draft',
+        objective: 'Confirmar resposta amigavel para lead inexistente.',
+        expectedResult: 'Mensagem clara sem quebrar a interface.',
+        execution: baseExecution(8),
+      },
     ],
   },
   {
@@ -32,40 +62,67 @@ const SEED_CARDS: DeliveryCard[] = [
     column: 'testing',
     priority: 'Média',
     owner: 'Bianca',
+    ownerId: 'seed-bianca',
     businessGoal:
       'Garantir que a tela de campanhas escale bem para clientes com alto volume operacional e sem travamentos.',
     acceptanceCriteria: [
-      'A listagem deve carregar em tempo aceitável com grande volume.',
-      'A ordenação não pode travar a interface.',
+      'A listagem deve carregar em tempo aceitavel com grande volume.',
+      'A ordenacao nao pode travar a interface.',
     ],
-    qaNotes: 'Rodar cenários manuais e k6 antes do go-live.',
+    estimatedExecutionMinutes: 55,
+    qaNotes: 'Rodar cenarios manuais e k6 antes do go-live.',
     scenarios: [
-      { id: 'CT-PERF-03', title: 'Load campaign list under heavy volume', source: 'IA', status: 'Automated' },
+      {
+        id: 'CT-PERF-03',
+        title: 'Load campaign list under heavy volume',
+        source: 'IA',
+        status: 'Automated',
+        category: 'Performance',
+        execution: baseExecution(20),
+      },
     ],
   },
   {
     id: 'DEL-203',
-    title: 'Login com credenciais válidas',
-    epic: 'Autenticação',
+    title: 'Login com credenciais validas',
+    epic: 'Autenticacao',
     module: 'Acesso',
     column: 'done',
     priority: 'Alta',
     owner: 'Amanda',
-    businessGoal: 'Permitir autenticação estável e segura para todos os perfis de usuário.',
+    ownerId: 'seed-amanda',
+    businessGoal: 'Permitir autenticacao estavel e segura para todos os perfis de usuario.',
     acceptanceCriteria: [
-      'Usuário válido deve acessar o sistema com sucesso.',
-      'Sessão deve ser registrada corretamente.',
+      'Usuario valido deve acessar o sistema com sucesso.',
+      'Sessao deve ser registrada corretamente.',
     ],
-    qaNotes: 'Cobertura de smoke já validada.',
-    scenarios: [{ id: 'CT-FUNC-02', title: 'Authenticate a valid user', source: 'IA', status: 'Automated' }],
+    estimatedExecutionMinutes: 18,
+    qaNotes: 'Cobertura de smoke ja validada.',
+    scenarios: [
+      {
+        id: 'CT-FUNC-02',
+        title: 'Authenticate a valid user',
+        source: 'IA',
+        status: 'Automated',
+        execution: baseExecution(6),
+      },
+    ],
   },
 ];
 
-function cloneCards(cards: DeliveryCard[]) {
-  return cards.map((card) => ({
+function cloneCards(cards: DeliveryCard[]): DeliveryCard[] {
+  return cards.map((card): DeliveryCard => ({
     ...card,
     acceptanceCriteria: [...card.acceptanceCriteria],
-    scenarios: card.scenarios.map((scenario) => ({ ...scenario })),
+    scenarios: card.scenarios.map((scenario): Scenario => ({
+      ...scenario,
+      execution: scenario.execution
+        ? {
+            ...scenario.execution,
+            evidences: [...scenario.execution.evidences],
+          }
+        : undefined,
+    })),
   }));
 }
 
@@ -98,7 +155,15 @@ function toCard(row: { card: DeliveryCard }) {
   return {
     ...card,
     acceptanceCriteria: [...card.acceptanceCriteria],
-    scenarios: card.scenarios.map((scenario) => ({ ...scenario })),
+    scenarios: card.scenarios.map((scenario) => ({
+      ...scenario,
+      execution: scenario.execution
+        ? {
+            ...scenario.execution,
+            evidences: [...scenario.execution.evidences],
+          }
+        : undefined,
+    })),
   };
 }
 
@@ -148,28 +213,30 @@ export async function setBoardCards(tenantId: string, cards: DeliveryCard[]) {
 }
 
 export async function deleteBoardCard(tenantId: string, cardId: string) {
-  const cards = await getBoardCards(tenantId);
+  const cards: DeliveryCard[] = await getBoardCards(tenantId);
   const next = cards.filter((card: DeliveryCard) => card.id !== cardId);
   await setBoardCards(tenantId, next);
   return next;
 }
 
 export async function upsertBoardCard(tenantId: string, card: DeliveryCard) {
-  const cards = await getBoardCards(tenantId);
+  const cards: DeliveryCard[] = await getBoardCards(tenantId);
   const index = cards.findIndex((item: DeliveryCard) => item.id === card.id);
-  const beforeCard = index >= 0 ? cards[index] : null;
+  const beforeCard: DeliveryCard | null = index >= 0 ? cards[index] : null;
+
   if (index >= 0) {
-    cards[index] = { ...cards[index], ...card };
+    cards[index] = { ...cards[index], ...card } as DeliveryCard;
   } else {
     cards.unshift(card);
   }
+
   const next = await setBoardCards(tenantId, cards);
-  await recordCardHistory(tenantId, card.id, index >= 0 ? 'update' : 'create', beforeCard, card);
+  await recordCardHistory(tenantId, card.id, index >= 0 ? 'update' : 'create', beforeCard, card as DeliveryCard);
   return next;
 }
 
 export async function moveBoardCard(tenantId: string, cardId: string, column: ColumnId) {
-  const cards = await getBoardCards(tenantId);
+  const cards: DeliveryCard[] = await getBoardCards(tenantId);
   const beforeCard = cards.find((card: DeliveryCard) => card.id === cardId) || null;
   const next = cards.map((card: DeliveryCard) => (card.id === cardId ? { ...card, column } : card));
   const updated = next.find((card: DeliveryCard) => card.id === cardId) || null;
@@ -179,12 +246,10 @@ export async function moveBoardCard(tenantId: string, cardId: string, column: Co
 }
 
 export async function addScenarioToBoardCard(tenantId: string, cardId: string, scenario: Scenario) {
-  const cards = await getBoardCards(tenantId);
+  const cards: DeliveryCard[] = await getBoardCards(tenantId);
   const beforeCard = cards.find((card: DeliveryCard) => card.id === cardId) || null;
   const next = cards.map((card: DeliveryCard) =>
-    card.id === cardId
-      ? { ...card, scenarios: [scenario, ...card.scenarios] }
-      : card
+    card.id === cardId ? { ...card, scenarios: [scenario, ...card.scenarios] } : card,
   );
   const updated = next.find((card: DeliveryCard) => card.id === cardId) || null;
   const result = await setBoardCards(tenantId, next);

@@ -1,13 +1,48 @@
 export type ColumnId = 'discovery' | 'refinement' | 'qa' | 'testing' | 'done';
-export type Priority = 'Baixa' | 'Média' | 'Alta';
+export type Priority = 'Baixa' | 'Media' | 'Média' | 'Alta';
 
-export type PanelId = 'executive' | 'kanban' | 'criteria' | 'qa' | 'automation' | 'integrations' | 'settings';
+export type PanelId =
+  | 'executive'
+  | 'kanban'
+  | 'criteria'
+  | 'qa'
+  | 'automation'
+  | 'integrations'
+  | 'settings';
+
+export type TeamMember = {
+  id: string;
+  name: string;
+  email: string;
+  role: 'PO' | 'QA' | 'Dev' | 'Gestor';
+};
+
+export type ExecutionStatus = 'Not Run' | 'Passed' | 'Failed';
+export type BugSource = 'IA' | 'Manual' | 'None';
+
+export type ScenarioExecution = {
+  estimatedMinutes: number;
+  actualMinutes: number;
+  status: ExecutionStatus;
+  notes: string;
+  executedBy: string;
+  evidences: string[];
+  bugSource: BugSource;
+  bugTitle: string;
+  bugDescription: string;
+};
 
 export type Scenario = {
   id: string;
   title: string;
   source: 'IA' | 'Manual';
   status: 'Draft' | 'Ready' | 'Automated';
+  objective?: string;
+  steps?: string;
+  expectedResult?: string;
+  category?: 'Funcional' | 'Performance';
+  owner?: string;
+  execution?: ScenarioExecution;
 };
 
 export type DeliveryCard = {
@@ -18,8 +53,10 @@ export type DeliveryCard = {
   column: ColumnId;
   priority: Priority;
   owner: string;
+  ownerId?: string;
   businessGoal: string;
   acceptanceCriteria: string[];
+  estimatedExecutionMinutes?: number;
   qaNotes: string;
   scenarios: Scenario[];
 };
