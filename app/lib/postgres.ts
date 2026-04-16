@@ -1,8 +1,6 @@
-import type { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
+import type { Client, QueryResult, QueryResultRow } from 'pg';
 
-type GlobalWithPool = typeof globalThis & {
-  __qaPgPool?: Pool;
-  __qaPgPoolPromise?: Promise<Pool>;
+type GlobalWithPostgres = typeof globalThis & {
   __qaPgSchemaReady?: Promise<void>;
   __qaPgSchemaVersion?: string;
 };
@@ -75,33 +73,28 @@ async function resolveDatabaseUrl() {
   throw new Error('DATABASE_URL is required to use Postgres persistence.');
 }
 
-async function loadPoolConstructor() {
+async function loadClientConstructor() {
   const pgModule = await import('pg');
   const candidate =
-    pgModule.Pool ||
-    (pgModule.default as { Pool?: typeof Pool } | undefined)?.Pool;
+    pgModule.Client ||
+    (pgModule.default as { Client?: typeof Client } | undefined)?.Client;
 
   if (typeof candidate !== 'function') {
-    throw new Error('Postgres Pool constructor is unavailable in this runtime.');
+    throw new Error('Postgres Client constructor is unavailable in this runtime.');
   }
 
-  return candidate as typeof Pool;
+  return candidate as typeof Client;
 }
 
-async function getPool() {
-  const globalScope = globalThis as GlobalWithPool;
-  if (!globalScope.__qaPgPoolPromise) {
-    globalScope.__qaPgPoolPromise = (async () => {
-      const connectionString = await resolveDatabaseUrl();
-      const PoolConstructor = await loadPoolConstructor();
-      return new PoolConstructor({
-        connectionString,
-        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
-      });
-    })();
-  }
-  globalScope.__qaPgPool = await globalScope.__qaPgPoolPromise;
-  return globalScope.__qaPgPool;
+async function createClient() {
+  const connectionString = await resolveDatabaseUrl();
+  const ClientConstructor = await loadClientConstructor();
+  const client = new ClientConstructor({
+    connectionString,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+  });
+  await client.connect();
+  return client;
 }
 
 async function ensureSchema() {
@@ -109,7 +102,7 @@ async function ensureSchema() {
     return;
   }
 
-  const globalScope = globalThis as GlobalWithPool;
+  const globalScope = globalThis as GlobalWithPostgres;
   if (globalScope.__qaPgSchemaVersion !== SCHEMA_VERSION) {
     globalScope.__qaPgSchemaReady = undefined;
     globalScope.__qaPgSchemaVersion = SCHEMA_VERSION;
@@ -117,8 +110,7 @@ async function ensureSchema() {
 
   if (!globalScope.__qaPgSchemaReady) {
     globalScope.__qaPgSchemaReady = (async () => {
-      const pool = await getPool();
-      const client = await pool.connect();
+      const client = await createClient();
       try {
         await client.query(`
           CREATE TABLE IF NOT EXISTS tenants (
@@ -226,7 +218,7 @@ async function ensureSchema() {
           CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_used_at ON password_reset_tokens(used_at);
         `);
       } finally {
-        client.release();
+        await client.end().catch(() => {});
       }
     })();
   }
@@ -239,14 +231,17 @@ export async function dbQuery<T extends QueryResultRow = QueryResultRow>(
   values: unknown[] = [],
 ): Promise<QueryResult<T>> {
   await ensureSchema();
-  const pool = await getPool();
-  return pool.query<T>(text, values);
+  const client = await createClient();
+  try {
+    return await client.query<T>(text, values);
+  } finally {
+    await client.end().catch(() => {});
+  }
 }
 
-export async function dbTransaction<T>(handler: (client: PoolClient) => Promise<T>): Promise<T> {
+export async function dbTransaction<T>(handler: (client: Client) => Promise<T>): Promise<T> {
   await ensureSchema();
-  const pool = await getPool();
-  const client = await pool.connect();
+  const client = await createClient();
   try {
     await client.query('BEGIN');
     const result = await handler(client);
@@ -260,7 +255,7 @@ export async function dbTransaction<T>(handler: (client: PoolClient) => Promise<
     }
     throw error;
   } finally {
-    client.release();
+    await client.end().catch(() => {});
   }
 }
 
