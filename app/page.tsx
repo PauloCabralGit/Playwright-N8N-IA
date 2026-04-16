@@ -556,12 +556,9 @@ export default function Page() {
         setCurrentTenant((prev) => data.tenant || prev || null);
         setAuthState('authenticated');
 
-        if (data.account?.tenantId) {
-          void loadN8nSettings(data.account.tenantId, data.tenant || undefined);
-        }
-      } catch (error) {
-        if (!mounted) return;
-        console.error('Failed to load auth state', error);
+        } catch (error) {
+          if (!mounted) return;
+          console.error('Failed to load auth state', error);
         clearAuthBootstrap();
         setAuthState('unauthenticated');
       }

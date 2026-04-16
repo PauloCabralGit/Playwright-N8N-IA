@@ -1,6 +1,7 @@
-import type { Client, QueryResult, QueryResultRow } from 'pg';
+import type { Client, Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 
 type GlobalWithPostgres = typeof globalThis & {
+  __qaPgPool?: Promise<Pool>;
   __qaPgSchemaReady?: Promise<void>;
   __qaPgSchemaVersion?: string;
 };
@@ -106,6 +107,40 @@ async function loadClientConstructor() {
   return candidate as typeof Client;
 }
 
+async function loadPoolConstructor() {
+  const pgModule = await import('pg');
+  const candidate =
+    pgModule.Pool ||
+    (pgModule.default as { Pool?: typeof Pool } | undefined)?.Pool;
+
+  if (typeof candidate !== 'function') {
+    throw new Error('Postgres Pool constructor is unavailable in this runtime.');
+  }
+
+  return candidate as typeof Pool;
+}
+
+async function getPool() {
+  const globalScope = globalThis as GlobalWithPostgres;
+
+  if (!globalScope.__qaPgPool) {
+    globalScope.__qaPgPool = (async () => {
+      const connectionString = await resolveDatabaseUrl();
+      const PoolConstructor = await loadPoolConstructor();
+
+      return new PoolConstructor({
+        connectionString,
+        ssl: shouldUseSsl(connectionString) ? { rejectUnauthorized: false } : undefined,
+        max: 5,
+        idleTimeoutMillis: 30_000,
+        connectionTimeoutMillis: 10_000,
+      });
+    })();
+  }
+
+  return globalScope.__qaPgPool;
+}
+
 async function createClient() {
   const connectionString = await resolveDatabaseUrl();
   const ClientConstructor = await loadClientConstructor();
@@ -115,6 +150,11 @@ async function createClient() {
   });
   await client.connect();
   return client;
+}
+
+async function createPoolClient() {
+  const pool = await getPool();
+  return pool.connect();
 }
 
 async function ensureSchema() {
@@ -251,17 +291,17 @@ export async function dbQuery<T extends QueryResultRow = QueryResultRow>(
   values: unknown[] = [],
 ): Promise<QueryResult<T>> {
   await ensureSchema();
-  const client = await createClient();
+  const client = await createPoolClient();
   try {
     return await client.query<T>(text, values);
   } finally {
-    await client.end().catch(() => {});
+    client.release();
   }
 }
 
-export async function dbTransaction<T>(handler: (client: Client) => Promise<T>): Promise<T> {
+export async function dbTransaction<T>(handler: (client: PoolClient | Client) => Promise<T>): Promise<T> {
   await ensureSchema();
-  const client = await createClient();
+  const client = await createPoolClient();
   try {
     await client.query('BEGIN');
     const result = await handler(client);
@@ -275,7 +315,7 @@ export async function dbTransaction<T>(handler: (client: Client) => Promise<T>):
     }
     throw error;
   } finally {
-    await client.end().catch(() => {});
+    client.release();
   }
 }
 
