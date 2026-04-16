@@ -54,13 +54,15 @@ class MiniEventEmitter {
 }
 
 async function loadCloudflareSockets(): Promise<CloudflareSocketsModule> {
-  // workerd provides this built-in at runtime; TypeScript does not resolve it reliably here.
-  // @ts-expect-error Cloudflare Workers built-in module
-  return import('cloudflare:sockets').catch((error) => {
+  const runtimeImport = new Function(
+    'return import("cloudflare:sockets")'
+  ) as () => Promise<CloudflareSocketsModule>;
+
+  return runtimeImport().catch((error) => {
     throw new Error(
       `Unable to load cloudflare:sockets at runtime: ${error instanceof Error ? error.message : String(error)}`
     );
-  }) as Promise<CloudflareSocketsModule>;
+  });
 }
 
 export class CloudflareSocket extends MiniEventEmitter {
