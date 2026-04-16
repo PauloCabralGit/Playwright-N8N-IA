@@ -54,7 +54,9 @@ class MiniEventEmitter {
 }
 
 async function loadCloudflareSockets(): Promise<CloudflareSocketsModule> {
-  return import('cloudflare:sockets').catch((error) => {
+  const moduleName = 'cloudflare:sockets';
+
+  return import(moduleName).catch((error) => {
     throw new Error(
       `Unable to load cloudflare:sockets at runtime: ${error instanceof Error ? error.message : String(error)}`
     );
