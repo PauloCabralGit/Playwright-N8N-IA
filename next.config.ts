@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
       'pg-cloudflare/dist/empty.js': 'pg-cloudflare/dist/index.js',
     },
   },
-  webpack: (config, { isServer, webpack }) => {
+  webpack: (config, { isServer }) => {
     if (isServer) {
       config.resolve = config.resolve || {};
       config.resolve.conditionNames = Array.from(
@@ -23,12 +23,14 @@ const nextConfig: NextConfig = {
         'pg-cloudflare': pgCloudflareRuntimePath,
         'pg-cloudflare/dist/empty.js': pgCloudflareRuntimePath,
       };
-      config.plugins = config.plugins || [];
-      config.plugins.push(
-        new webpack.IgnorePlugin({
-          resourceRegExp: /^cloudflare:sockets$/,
-        })
-      );
+      config.externals = config.externals || [];
+      config.externals.push(({ request }: { request?: string }, callback: (error?: Error | null, result?: string) => void) => {
+        if (request === 'cloudflare:sockets') {
+          return callback(null, 'module cloudflare:sockets');
+        }
+
+        return callback();
+      });
     }
 
     return config;
