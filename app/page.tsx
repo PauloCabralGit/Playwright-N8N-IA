@@ -344,8 +344,6 @@ export default function Page() {
       { field: 'appPublicUrl', label: 'URL pública do app' },
       { field: 'webhookUrl', label: 'Webhook URL do n8n' },
       { field: 'apiKey', label: 'API Key do n8n' },
-      { field: 'discordApplicationId', label: 'Discord Application ID' },
-      { field: 'discordPublicKey', label: 'Discord Public Key' },
       { field: 'discordBotToken', label: 'Discord Bot Token' },
       { field: 'githubOwner', label: 'GitHub Owner' },
       { field: 'githubRepo', label: 'GitHub Repo' },
