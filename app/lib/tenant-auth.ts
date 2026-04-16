@@ -5,6 +5,7 @@ import { dbQuery, dbTransaction } from '@/app/lib/postgres';
 import workflowTemplate from '@/updated_flow.json';
 
 export const SESSION_COOKIE_NAME = 'qa_session';
+const PASSWORD_PBKDF2_ITERATIONS = 100000;
 
 export type TenantAccount = {
   id: string;
@@ -99,8 +100,8 @@ function resolveTenantWebhookPath(inputPath: string, tenantSlug: string) {
 
 function hashPassword(password: string) {
   const salt = randomBytes(16).toString('hex');
-  const hash = pbkdf2Sync(password, salt, 120000, 32, 'sha256').toString('hex');
-  return `pbkdf2$120000$${salt}$${hash}`;
+  const hash = pbkdf2Sync(password, salt, PASSWORD_PBKDF2_ITERATIONS, 32, 'sha256').toString('hex');
+  return `pbkdf2$${PASSWORD_PBKDF2_ITERATIONS}$${salt}$${hash}`;
 }
 
 function hashResetToken(token: string) {
