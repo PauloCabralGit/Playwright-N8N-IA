@@ -1,13 +1,13 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "discord-n8n-relay",
+  "name": "orionsystem",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-04-15",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "services": [
     {
       "binding": "WORKER_SELF_REFERENCE",
-      "service": "discord-n8n-relay"
+      "service": "orionsystem"
     }
   ],
   "hyperdrive": [
