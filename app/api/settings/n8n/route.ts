@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getN8nConfig, setN8nConfig } from '@/app/lib/n8n-config';
 import type { N8nSettings } from '@/components/dashboard/types';
-import { buildTenantWebhookUrl, getCurrentTenant, publishTenantWorkflow } from '@/app/lib/tenant-auth';
-import { registerDiscordSlashCommands, resolveDiscordApplicationFromBotToken } from '@/app/lib/discord-bot';
+import { buildTenantWebhookUrl, getCurrentTenant } from '@/app/lib/tenant-auth';
+import { resolveDiscordApplicationFromBotToken } from '@/app/lib/discord-bot';
 
 function isValidUrl(value: string | undefined): boolean {
   if (!value) return false;
@@ -169,23 +169,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let publishedWorkflow: { workflowDownloadUrl?: string } | null = null;
-    if (tenant) {
-      try {
-        publishedWorkflow = await publishTenantWorkflow(tenant.id);
-      } catch (error) {
-        console.error('Failed to publish tenant workflow:', error);
-      }
-    }
-
-    if (savedConfig.discordApplicationId && savedConfig.discordBotToken) {
-      try {
-        await registerDiscordSlashCommands(savedConfig);
-      } catch (error) {
-        console.warn('Failed to register Discord commands:', error);
-      }
-    }
-
     if (body.runConnectionTest) {
       const testResponse = await fetch(new URL('/api/settings/n8n/test', request.url).toString(), {
         method: 'POST',
@@ -207,7 +190,6 @@ export async function POST(request: NextRequest) {
           {
             error: testPayload?.error || 'Connection test failed',
             issues: testPayload?.issues || [],
-            workflow: publishedWorkflow || undefined,
           },
           { status: testResponse.status || 400 }
         );
@@ -224,8 +206,9 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Configuration saved successfully',
       config: savedConfig,
-      workflow: publishedWorkflow || undefined,
-      warnings: [],
+      warnings: [
+        'As configuracoes foram salvas sem publicar workflow nem registrar comandos do Discord automaticamente.',
+      ],
     });
   } catch (error) {
     console.error('Error saving n8n configuration:', error);

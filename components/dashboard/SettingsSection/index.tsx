@@ -219,6 +219,10 @@ export function SettingsSection({ settings, toggleSetting, n8nSettings, tenantDa
       return;
     }
 
+    if (hasLoadedN8nConfig) {
+      return;
+    }
+
     try {
       const tenantQuery = `?tenantId=${encodeURIComponent(resolvedTenantId)}`;
       const [settingsResponse, configResponse] = await Promise.all([
@@ -264,7 +268,7 @@ export function SettingsSection({ settings, toggleSetting, n8nSettings, tenantDa
     } catch (error) {
       console.error('Failed to hydrate n8n settings from server', error);
     }
-  }, [n8nSettings, resolvedTenantId, tenantData]);
+  }, [hasLoadedN8nConfig, n8nSettings, resolvedTenantId, tenantData]);
 
   useEffect(() => {
     void reloadN8nConfig();
