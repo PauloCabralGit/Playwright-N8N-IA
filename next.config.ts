@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ['pg'],
+  transpilePackages: ['pg', 'pg-cloudflare'],
+  turbopack: {
+    resolveAlias: {
+      'pg-cloudflare': 'pg-cloudflare/dist/index.js',
+    },
+  },
 };
 
 export default nextConfig;
