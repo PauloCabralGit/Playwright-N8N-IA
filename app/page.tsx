@@ -1160,8 +1160,6 @@ export default function Page() {
               setSearch={setSearch}
               setSelectedId={setSelectedId}
               setDetailOpen={setDetailOpen}
-              setActiveSection={setActiveSection}
-              setPanelOpen={setPanelOpen}
               moveCard={moveCard}
             />
           </div>
@@ -1246,6 +1244,21 @@ export default function Page() {
                 <div className="text-xs uppercase tracking-[0.16em] text-slate-500">Módulo</div>
                 <div className="mt-2 font-semibold">{selectedCard.module}</div>
               </div>
+            </div>
+
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button
+                variant="outline"
+                className="rounded-2xl border-cyan-400/30 bg-cyan-500/10 text-cyan-100 hover:bg-cyan-500/15"
+                onClick={() => {
+                  setDetailOpen(false);
+                  setActiveSection('qa');
+                  setPanelOpen(true);
+                }}
+              >
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                Abrir QA
+              </Button>
             </div>
 
             <div className="rounded-[26px] border border-slate-200 bg-white p-5 text-slate-900">

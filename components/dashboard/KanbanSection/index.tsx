@@ -14,8 +14,6 @@ type KanbanSectionProps = {
   setSearch: (value: string) => void;
   setSelectedId: (id: string) => void;
   setDetailOpen: (open: boolean) => void;
-  setActiveSection: (value: 'qa') => void;
-  setPanelOpen: (open: boolean) => void;
   moveCard: (cardId: string, newColumn: ColumnId) => void;
 };
 
@@ -34,16 +32,8 @@ export function KanbanSection({
   setSearch,
   setSelectedId,
   setDetailOpen,
-  setActiveSection,
-  setPanelOpen,
   moveCard,
 }: KanbanSectionProps) {
-  const handleOpenQa = (id: string) => {
-    setSelectedId(id);
-    setActiveSection('qa');
-    setPanelOpen(true);
-  };
-
   const handleDragStart = (cardId: string) => {
     if (typeof window === 'undefined') return;
     window.sessionStorage.setItem('qa_drag_card_id', cardId);
@@ -105,7 +95,6 @@ export function KanbanSection({
                     setSelectedId(id);
                     setDetailOpen(true);
                   }}
-                  onOpenQa={handleOpenQa}
                 />
               ))}
 
