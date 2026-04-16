@@ -524,6 +524,7 @@ export default function Page() {
 
   useEffect(() => {
     let mounted = true;
+    let hasBootstrap = false;
 
     if (typeof window !== 'undefined') {
       try {
@@ -531,6 +532,7 @@ export default function Page() {
         if (rawBootstrap) {
           const parsed = JSON.parse(rawBootstrap) as AuthBootstrap;
           if (parsed?.account?.id) {
+            hasBootstrap = true;
             applyAuthBootstrap(parsed);
           }
         }
@@ -541,11 +543,14 @@ export default function Page() {
 
     const loadAuth = async () => {
       try {
-        const response = await fetch('/api/auth/me', { cache: 'no-store' });
+        const response = await fetch('/api/auth/me', {
+          cache: 'no-store',
+          credentials: 'same-origin',
+        });
         if (!mounted) return;
 
         if (!response.ok) {
-          if (authState === 'authenticated') {
+          if (hasBootstrap || authState === 'authenticated') {
             return;
           }
           setAuthState('unauthenticated');
@@ -562,7 +567,7 @@ export default function Page() {
       } catch (error) {
         if (!mounted) return;
         console.error('Failed to load auth state', error);
-        if (authState === 'authenticated') {
+        if (hasBootstrap || authState === 'authenticated') {
           return;
         }
         clearAuthBootstrap();

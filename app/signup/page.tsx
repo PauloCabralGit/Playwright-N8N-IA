@@ -9,7 +9,7 @@ export default function SignupPage() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch('/api/auth/me', { cache: 'no-store' })
+    fetch('/api/auth/me', { cache: 'no-store', credentials: 'same-origin' })
       .then((response) => {
         if (response.ok) {
           router.replace('/');

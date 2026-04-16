@@ -85,6 +85,23 @@ function isHttpUrl(value: string) {
   }
 }
 
+async function waitForAuthenticatedSession(attempts = 3) {
+  for (let index = 0; index < attempts; index += 1) {
+    const response = await fetch('/api/auth/me', {
+      cache: 'no-store',
+      credentials: 'same-origin',
+    }).catch(() => null);
+
+    if (response?.ok) {
+      return true;
+    }
+
+    await new Promise((resolve) => window.setTimeout(resolve, 250 * (index + 1)));
+  }
+
+  return false;
+}
+
 export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwitch = true }: AuthScreenProps) {
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [loginEmail, setLoginEmail] = useState('');
@@ -177,6 +194,7 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify(signupForm),
       });
 
@@ -215,6 +233,7 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({ email: loginEmail, password: loginPassword }),
       });
 
@@ -228,6 +247,7 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
       setStatus('success');
       setMessage('Login realizado com sucesso.');
       persistAuthBootstrap(payload);
+      await waitForAuthenticatedSession();
       onAuthenticated(payload);
     } catch (error) {
       setStatus('error');
