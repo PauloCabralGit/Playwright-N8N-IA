@@ -1,4 +1,4 @@
-import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
+import type { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 
 type GlobalWithPool = typeof globalThis & {
   __qaPgPool?: Pool;
@@ -75,12 +75,26 @@ async function resolveDatabaseUrl() {
   throw new Error('DATABASE_URL is required to use Postgres persistence.');
 }
 
+async function loadPoolConstructor() {
+  const pgModule = await import('pg');
+  const candidate =
+    pgModule.Pool ||
+    (pgModule.default as { Pool?: typeof Pool } | undefined)?.Pool;
+
+  if (typeof candidate !== 'function') {
+    throw new Error('Postgres Pool constructor is unavailable in this runtime.');
+  }
+
+  return candidate as typeof Pool;
+}
+
 async function getPool() {
   const globalScope = globalThis as GlobalWithPool;
   if (!globalScope.__qaPgPoolPromise) {
     globalScope.__qaPgPoolPromise = (async () => {
       const connectionString = await resolveDatabaseUrl();
-      return new Pool({
+      const PoolConstructor = await loadPoolConstructor();
+      return new PoolConstructor({
         connectionString,
         ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
       });
