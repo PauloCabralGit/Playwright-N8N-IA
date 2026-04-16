@@ -3,6 +3,7 @@ import {
   buildTenantWebhookUrl,
   createAccountAndTenant,
   publishTenantWorkflow,
+  SESSION_COOKIE_NAME,
   upsertTenantProfile,
 } from '@/app/lib/tenant-auth';
 import { registerDiscordSlashCommands, resolveDiscordApplicationFromBotToken } from '@/app/lib/discord-bot';
@@ -159,7 +160,7 @@ export async function POST(request: NextRequest) {
       console.error('Signup post-processing failed:', error);
     }
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         ok: true,
         account: {
@@ -185,6 +186,15 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 },
     );
+
+    response.cookies.set(SESSION_COOKIE_NAME, signupResult.sessionToken, {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      secure: process.env.NODE_ENV === 'production',
+    });
+
+    return response;
   } catch (error) {
     if (error instanceof Error && error.message.includes('Ja existe uma conta com esse e-mail.')) {
       return NextResponse.json(
