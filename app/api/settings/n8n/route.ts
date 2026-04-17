@@ -14,6 +14,21 @@ function isValidUrl(value: string | undefined): boolean {
   }
 }
 
+function normalizeBaseUrl(value: string | undefined): string {
+  return String(value || '').trim().replace(/\/+$/, '');
+}
+
+function resolveOrigin(value: string | undefined): string {
+  const normalized = String(value || '').trim();
+  if (!normalized) return '';
+
+  try {
+    return new URL(normalized).origin.replace(/\/+$/, '');
+  } catch {
+    return '';
+  }
+}
+
 function validateSettings(body: Partial<N8nSettings>) {
   const issues: string[] = [];
   const requiredFields: { key: keyof N8nSettings; label: string }[] = [
@@ -66,14 +81,14 @@ export async function POST(request: NextRequest) {
     }
 
     const currentConfig = await getN8nConfig(request, tenant.id);
-    const resolvedWebhookBaseUrl = tenant.webhookBaseUrl || currentConfig.webhookBaseUrl || (() => {
-      try {
-        return currentConfig.webhookUrl ? new URL(currentConfig.webhookUrl).origin : '';
-      } catch {
-        return '';
-      }
-    })();
-    const resolvedWebhookUrl = resolvedWebhookBaseUrl ? buildTenantWebhookUrl(resolvedWebhookBaseUrl) : String(body.webhookUrl ?? currentConfig.webhookUrl ?? '').trim();
+    const resolvedWebhookBaseUrl =
+      normalizeBaseUrl(body.webhookBaseUrl) ||
+      normalizeBaseUrl(tenant.webhookBaseUrl) ||
+      normalizeBaseUrl(currentConfig.webhookBaseUrl) ||
+      resolveOrigin(currentConfig.webhookUrl);
+    const resolvedWebhookUrl = resolvedWebhookBaseUrl
+      ? buildTenantWebhookUrl(resolvedWebhookBaseUrl)
+      : String(body.webhookUrl ?? currentConfig.webhookUrl ?? '').trim();
     const mergedConfig = {
       ...currentConfig,
       ...body,
@@ -81,6 +96,7 @@ export async function POST(request: NextRequest) {
       cnpj: String(body.cnpj ?? currentConfig.cnpj ?? '').trim(),
       address: String(body.address ?? currentConfig.address ?? '').trim(),
       appPublicUrl: String(body.appPublicUrl ?? currentConfig.appPublicUrl ?? '').trim(),
+      webhookBaseUrl: resolvedWebhookBaseUrl,
       webhookUrl: resolvedWebhookUrl,
       apiKey: String(body.apiKey ?? currentConfig.apiKey ?? '').trim(),
       githubOwner: String(body.githubOwner ?? currentConfig.githubOwner ?? '').trim(),

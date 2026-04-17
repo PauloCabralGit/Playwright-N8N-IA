@@ -213,5 +213,5 @@ export async function getPublicAppUrl(request?: NextRequest, tenantId?: string):
     }
   }
 
-  return 'https://mathilde-obcuneate-allusively.ngrok-free.dev';
+  return '';
 }

@@ -305,7 +305,7 @@ export function SettingsSection({ settings, toggleSetting, n8nSettings, tenantDa
         setN8nSaveStatus('success');
         setN8nErrors([]);
         setN8nWarnings(Array.isArray(payload?.warnings) ? payload.warnings : []);
-        onN8nSettingsSave?.(n8nForm);
+        onN8nSettingsSave?.(mergeSettings(payload?.config, n8nForm));
         setTimeout(() => setN8nSaveStatus('idle'), 3000);
       } else {
         const nextMessage =
