@@ -686,7 +686,7 @@ export default function Page() {
     handleSidebarClick('integrations');
   };
 
-  const persistBoardCard = async (card: DeliveryCard, action: 'create' | 'update' = 'update') => {
+  const persistBoardCard = async (card: DeliveryCard, action: 'create' | 'update' | 'local' = 'update') => {
     const normalizedCard = normalizeCardForUi(card);
 
     setCards((prev) => prev.map((item) => (item.id === normalizedCard.id ? normalizedCard : item)));
@@ -750,7 +750,7 @@ export default function Page() {
     }
   };
 
-  const generateAiWithN8n = async (card: DeliveryCard) => {
+  const generateAiWithN8n = async (card: DeliveryCard, scenario: Scenario) => {
     if (hasUnsavedN8nSettings || !isN8nIntegrationReady(n8nDraftSettings) || !n8nConnectionVerified) return;
 
     try {
@@ -758,10 +758,23 @@ export default function Page() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          id: scenario.id,
+          title: scenario.title,
+          module: card.module,
+          category: /perf/i.test(`${card.id} ${card.module} ${card.title}`) ? 'Performance' : 'Funcional',
+          priority: card.priority,
+          status: scenario.status || 'Draft',
+          objective: card.businessGoal,
+          preconditions: card.qaNotes,
+          steps: card.acceptanceCriteria.join('\n'),
+          expectedResult: card.acceptanceCriteria.join('\n'),
+          owner: card.owner,
           cardId: card.id,
-          title: card.title,
-          businessGoal: card.businessGoal,
+          card,
           acceptanceCriteria: card.acceptanceCriteria,
+          businessGoal: card.businessGoal,
+          qaNotes: card.qaNotes,
+          syncToN8n: true,
           configSnapshot: n8nDraftSettings,
         }),
       });
@@ -916,27 +929,26 @@ export default function Page() {
       return;
     }
 
-    const updatedCard = {
-      ...selectedCard,
-      scenarios: [
-        {
-          id: `CT-AI-${Math.floor(Math.random() * 900 + 100)}`,
-          title: `Automated scenario suggestion for ${selectedCard.title}`,
-          source: 'IA' as const,
-          status: 'Ready' as const,
-          objective: selectedCard.businessGoal,
-          expectedResult: selectedCard.acceptanceCriteria.join('\n'),
-          owner: selectedCard.owner,
-          execution: createDefaultExecution(12),
-        },
-        ...selectedCard.scenarios,
-      ],
+    const aiScenario: Scenario = {
+      id: `CT-AI-${Math.floor(Math.random() * 900 + 100)}`,
+      title: `AI scenario draft for ${selectedCard.title}`,
+      source: 'IA' as const,
+      status: 'Ready' as const,
+      objective: selectedCard.businessGoal,
+      steps: selectedCard.acceptanceCriteria.join('\n'),
+      expectedResult: selectedCard.acceptanceCriteria.join('\n'),
+      owner: selectedCard.owner,
+      execution: createDefaultExecution(12),
     };
 
-    void persistBoardCard(updatedCard, 'update');
+    const updatedCard = {
+      ...selectedCard,
+      scenarios: [aiScenario, ...selectedCard.scenarios],
+    };
 
-    // Call n8n to generate AI scenario
-    generateAiWithN8n(selectedCard);
+    void persistBoardCard(updatedCard, 'local');
+
+    generateAiWithN8n(updatedCard, aiScenario);
   };
 
   const moveCard = async (cardId: string, newColumn: ColumnId) => {

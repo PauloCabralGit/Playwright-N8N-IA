@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { getN8nConfig, getN8nWebhookUrl } from '@/app/lib/n8n-config';
 import { getCurrentTenant } from '@/app/lib/tenant-auth';
 import { addScenarioToBoardCard } from '@/app/lib/board-store';
+import type { DeliveryCard } from '@/components/dashboard/types';
 
 const GITHUB_USER_AGENT = 'orionsystem-cloudflare-worker';
 
@@ -202,6 +203,10 @@ export async function POST(request: NextRequest) {
         webhookUrl?: string;
       };
       cardId?: string;
+      card?: DeliveryCard;
+      acceptanceCriteria?: string[];
+      businessGoal?: string;
+      qaNotes?: string;
     };
 
     if (!body.id || !body.title) {
@@ -245,8 +250,12 @@ export async function POST(request: NextRequest) {
 
       const discordWebhook = (await getN8nConfig(request, tenant?.id)).discordWebhook || '';
       result.n8n = await callN8n(webhookUrl, {
-        action: 'scenario_created',
+        action: 'task_ia',
         scenario,
+        card: body.card || null,
+        acceptanceCriteria: Array.isArray(body.acceptanceCriteria) ? body.acceptanceCriteria : [],
+        businessGoal: body.businessGoal || scenario.objective || '',
+        qaNotes: body.qaNotes || scenario.preconditions || '',
         github: result.github || null,
         tenantId: tenant?.id || '',
         tenantSlug: tenant?.slug || '',
