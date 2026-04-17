@@ -251,11 +251,14 @@ export async function POST(request: NextRequest) {
       const discordWebhook = (await getN8nConfig(request, tenant?.id)).discordWebhook || '';
       result.n8n = await callN8n(webhookUrl, {
         action: 'task_ia',
+        command: 'task_ia',
         scenario,
         card: body.card || null,
         acceptanceCriteria: Array.isArray(body.acceptanceCriteria) ? body.acceptanceCriteria : [],
         businessGoal: body.businessGoal || scenario.objective || '',
         qaNotes: body.qaNotes || scenario.preconditions || '',
+        settings: body.configSnapshot || {},
+        configSnapshot: body.configSnapshot || {},
         github: result.github || null,
         tenantId: tenant?.id || '',
         tenantSlug: tenant?.slug || '',
