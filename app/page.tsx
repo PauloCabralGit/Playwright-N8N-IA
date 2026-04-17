@@ -754,6 +754,8 @@ export default function Page() {
     if (hasUnsavedN8nSettings || !isN8nIntegrationReady(n8nDraftSettings) || !n8nConnectionVerified) return;
 
     try {
+      setSyncStatus('pending');
+      setSyncMessage('Gerando cenário por IA...');
       const response = await fetch('/api/scenarios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -779,9 +781,24 @@ export default function Page() {
         }),
       });
       if (!response.ok) {
-        console.error('Erro ao gerar cenários com IA');
+        const payload = await response.json().catch(() => ({}));
+        const message = payload?.stage
+          ? `Erro ao gerar cenário por IA em ${payload.stage}: ${payload.error || 'Falha desconhecida'}`
+          : payload?.error || 'Erro ao gerar cenário por IA';
+        setSyncStatus('error');
+        setSyncMessage(message);
+        clearSyncMessage();
+        console.error('Erro ao gerar cenários com IA', payload);
+        return;
       }
+
+      setSyncStatus('success');
+      setSyncMessage('Cenário enviado para geração IA com sucesso.');
+      clearSyncMessage();
     } catch (error) {
+      setSyncStatus('error');
+      setSyncMessage(`Erro na geração de cenários IA: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      clearSyncMessage();
       console.error('Erro na geração de cenários IA:', error);
     }
   };

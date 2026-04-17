@@ -195,6 +195,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  let stage = 'request:parse';
+
   try {
     const body = (await request.json()) as ScenarioDTO & {
       syncToGitHub?: boolean;
@@ -209,10 +211,12 @@ export async function POST(request: NextRequest) {
       qaNotes?: string;
     };
 
+    stage = 'request:validate';
     if (!body.id || !body.title) {
-      return json({ error: 'id and title are required' }, 400);
+      return json({ error: 'id and title are required', stage }, 400);
     }
 
+    stage = 'scenario:normalize';
     const scenario: ScenarioDTO = {
       ...body,
       status: body.status || 'Backlog',
@@ -222,9 +226,11 @@ export async function POST(request: NextRequest) {
       tags: body.tags || [],
     };
 
+    stage = 'tenant:resolve';
     const tenant = await getCurrentTenant(request);
 
     if (body.cardId && tenant) {
+      stage = 'board:add-scenario';
       await addScenarioToBoardCard(tenant.id, body.cardId, {
         id: scenario.id,
         title: scenario.title,
@@ -238,17 +244,23 @@ export async function POST(request: NextRequest) {
     };
 
     if (body.syncToGitHub) {
+      stage = 'github:save-feature';
       result.github = await saveFeatureToGitHub(scenario);
     }
 
+    stage = 'n8n:webhook-resolve';
     const webhookUrl = body.configSnapshot?.webhookUrl?.trim() || '';
 
     if (body.syncToN8n) {
+      stage = 'n8n:webhook-validate';
       if (!isValidUrl(webhookUrl)) {
         throw new Error('Webhook URL inválida ou ausente no payload atual.');
       }
 
+      stage = 'n8n:config-load';
       const discordWebhook = (await getN8nConfig(request, tenant?.id)).discordWebhook || '';
+
+      stage = 'n8n:call-webhook';
       result.n8n = await callN8n(webhookUrl, {
         type: 'task_ia',
         action: 'task_ia',
@@ -273,6 +285,7 @@ export async function POST(request: NextRequest) {
     return json(
       {
         error: error instanceof Error ? error.message : 'Unknown error',
+        stage,
       },
       500,
     );
