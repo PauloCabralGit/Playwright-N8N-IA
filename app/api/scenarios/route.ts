@@ -250,6 +250,7 @@ export async function POST(request: NextRequest) {
 
       const discordWebhook = (await getN8nConfig(request, tenant?.id)).discordWebhook || '';
       result.n8n = await callN8n(webhookUrl, {
+        type: 'task_ia',
         action: 'task_ia',
         command: 'task_ia',
         scenario,
