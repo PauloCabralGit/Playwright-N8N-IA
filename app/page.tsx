@@ -702,9 +702,6 @@ export default function Page() {
       console.error('Failed to persist board card', error);
     }
 
-    if (settings.autoSync && (action === 'create' || action === 'update')) {
-      void syncWithN8n(normalizedCard, action, { quietOnBlock: true, quietOnFailure: true });
-    }
   };
 
   const syncWithN8n = async (
