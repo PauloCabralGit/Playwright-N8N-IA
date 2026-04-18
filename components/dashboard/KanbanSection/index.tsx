@@ -1,4 +1,4 @@
-import { Filter, Search } from 'lucide-react';
+import { Filter, Plus, Search } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ type KanbanSectionProps = {
   setSelectedId: (id: string) => void;
   setDetailOpen: (open: boolean) => void;
   moveCard: (cardId: string, newColumn: ColumnId) => void;
+  onCreateInColumn: (columnId: ColumnId) => void;
 };
 
 const columnGlow: Record<ColumnId, string> = {
@@ -34,6 +35,7 @@ export function KanbanSection({
   setSelectedId,
   setDetailOpen,
   moveCard,
+  onCreateInColumn,
 }: KanbanSectionProps) {
   const handleDragStart = (cardId: string) => {
     if (typeof window === 'undefined') return;
@@ -47,6 +49,9 @@ export function KanbanSection({
     window.sessionStorage.removeItem('qa_drag_card_id');
     void moveCard(cardId, columnId);
   };
+
+  const canCreateInColumn = (columnId: ColumnId) =>
+    columnId === 'discovery' || columnId === 'refinement' || columnId === 'development';
 
   return (
     <section id="kanban" className="xl:col-span-12">
@@ -64,7 +69,7 @@ export function KanbanSection({
             </div>
             <Button variant="outline" className="h-12 rounded-2xl border-slate-800 bg-slate-950/70 text-slate-100 hover:bg-slate-900">
               <Filter className="mr-2 h-4 w-4" />
-              Board QA
+              Pipeline Orion
             </Button>
           </div>
         </CardContent>
@@ -81,8 +86,21 @@ export function KanbanSection({
             <CardHeader className="pb-3">
               <div className={`h-1.5 rounded-full bg-gradient-to-r ${columnGlow[column.id]}`} />
               <div className="flex items-center justify-between gap-3">
-                <CardTitle className="text-base font-bold text-white">{column.title}</CardTitle>
-                <Badge className="rounded-full border-0 bg-slate-800 text-slate-100">{grouped[column.id].length}</Badge>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base font-bold text-white">{column.title}</CardTitle>
+                  <Badge className="rounded-full border-0 bg-slate-800 text-slate-100">{grouped[column.id].length}</Badge>
+                </div>
+                {canCreateInColumn(column.id) && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10"
+                    onClick={() => onCreateInColumn(column.id)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
               <CardDescription className="text-slate-400">{column.hint}</CardDescription>
             </CardHeader>

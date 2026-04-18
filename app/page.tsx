@@ -5,12 +5,11 @@ import { useRouter } from 'next/navigation';
 import {
   AlertCircle,
   Bot,
+  ChevronDown,
   Database,
   FileText,
   GitBranch,
-  KanbanSquare,
   Layers3,
-  LayoutDashboard,
   Plus,
   LogOut,
   Settings,
@@ -24,25 +23,31 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
-import { SidebarItem } from '@/components/dashboard/SidebarItem';
-import { ExecutiveSection } from '@/components/dashboard/ExecutiveSection';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { KanbanSection } from '@/components/dashboard/KanbanSection';
 import { CriteriaSection } from '@/components/dashboard/CriteriaSection';
 import { QaSection } from '@/components/dashboard/QaSection';
 import { AutomationSection } from '@/components/dashboard/AutomationSection';
 import { IntegrationsSection } from '@/components/dashboard/IntegrationsSection';
 import { SettingsSection } from '@/components/dashboard/SettingsSection';
+import { OrionLogo } from '@/components/dashboard/OrionLogo';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import type { ColumnId, DeliveryCard, N8nSettings, PanelId, Scenario, TeamMember } from '@/components/dashboard/types';
 
 const columns: { id: ColumnId; title: string; hint: string }[] = [
-  { id: 'discovery', title: 'Discovery', hint: 'Ideias e entendimento de negócio' },
-  { id: 'refinement', title: 'Refinement', hint: 'Critérios de aceite e detalhamento' },
+  { id: 'discovery', title: 'Descoberta', hint: 'Ideias, contexto e entendimento do fluxo' },
+  { id: 'refinement', title: 'Refinamento', hint: 'Critérios de aceite e alinhamento funcional' },
   { id: 'development', title: 'Desenvolvimento', hint: 'Implementação técnica e ajustes da entrega' },
-  { id: 'qa', title: 'Ready for QA', hint: 'Pronto para gerar/revisar cenários' },
-  { id: 'testing', title: 'Testing', hint: 'Execução manual e automação' },
-  { id: 'done', title: 'Done', hint: 'Testado, sincronizado e entregue' },
+  { id: 'qa', title: 'Pronto para QA', hint: 'Pronto para gerar e revisar cenários' },
+  { id: 'testing', title: 'Execução', hint: 'Execução manual, automação e evidências' },
+  { id: 'done', title: 'Concluido', hint: 'Validado e pronto para entrega' },
 ];
 
 const initialCards: DeliveryCard[] = [
@@ -193,6 +198,7 @@ export default function Page() {
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState(initialCards[0].id);
   const [createOpen, setCreateOpen] = useState(false);
+  const [createColumn, setCreateColumn] = useState<ColumnId>('discovery');
   const [detailOpen, setDetailOpen] = useState(false);
   const [form, setForm] = useState({
     epic: '',
@@ -684,6 +690,12 @@ export default function Page() {
     }
   };
 
+  const openCreateDialog = (column: ColumnId) => {
+    setCreateColumn(column);
+    setForm({ epic: '', title: '', module: '', businessGoal: '', acceptanceCriteria: '', qaNotes: '' });
+    setCreateOpen(true);
+  };
+
   const syncSelectedCard = () => {
     syncWithN8n(selectedCard, 'update');
     handleSidebarClick('integrations');
@@ -914,12 +926,14 @@ export default function Page() {
       .map((item) => item.trim())
       .filter(Boolean);
 
+    const shouldSeedScenario = createColumn === 'qa' || createColumn === 'testing' || createColumn === 'done';
+
     const newCard: DeliveryCard = {
       id: `DEL-${Math.floor(Math.random() * 900 + 100)}`,
       epic: form.epic || 'Novo épico',
       title: form.title || 'Nova entrega',
       module: form.module || 'Geral',
-      column: acceptanceCriteria.length ? 'qa' : 'refinement',
+      column: createColumn,
       priority: 'Média',
       owner: teamMembers[0]?.name || currentAccount?.companyName || 'Responsavel pendente',
       ownerId: teamMembers[0]?.id || '',
@@ -927,11 +941,11 @@ export default function Page() {
       acceptanceCriteria,
       estimatedExecutionMinutes: Math.max(acceptanceCriteria.length * 10, 15),
       qaNotes: form.qaNotes,
-      scenarios: acceptanceCriteria.length
+      scenarios: acceptanceCriteria.length && shouldSeedScenario
         ? [
-            {
-              id: `CT-AI-${Math.floor(Math.random() * 900 + 100)}`,
-              title: `AI scenario draft for ${form.title || 'new delivery'}`,
+              {
+                id: `CT-AI-${Math.floor(Math.random() * 900 + 100)}`,
+                title: `AI scenario draft for ${form.title || 'new delivery'}`,
               source: 'IA',
               status: 'Draft',
               objective: form.businessGoal || '',
@@ -939,13 +953,13 @@ export default function Page() {
               execution: createDefaultExecution(10),
             },
           ]
-        : [],
+          : [],
     };
 
     setCards((prev) => [newCard, ...prev]);
     setSelectedId(newCard.id);
-    setActiveSection('qa');
-    setPanelOpen(true);
+    setActiveSection('kanban');
+    setPanelOpen(false);
     setCreateOpen(false);
     setForm({ epic: '', title: '', module: '', businessGoal: '', acceptanceCriteria: '', qaNotes: '' });
 
@@ -1010,179 +1024,120 @@ export default function Page() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(217,70,239,0.16),_transparent_22%),radial-gradient(circle_at_top_right,_rgba(59,130,246,0.14),_transparent_20%),linear-gradient(180deg,#060816_0%,#0b1020_45%,#0a0f1d_100%)] text-white">
-      <div className="grid min-h-screen grid-cols-12">
-        <aside className="col-span-12 border-r border-white/10 bg-black/20 px-5 py-6 backdrop-blur-2xl lg:col-span-2">
-          <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.06))] p-5 shadow-[0_25px_80px_-35px_rgba(217,70,239,0.6)]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-500 to-violet-600 shadow-[0_20px_50px_-20px_rgba(217,70,239,0.9)]">
-                <Sparkles className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <div className="text-lg font-black tracking-tight">QA Flow Pro</div>
-                <div className="text-xs text-slate-400">PO → QA → n8n → GitHub</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 space-y-2">
-            {(
-              [
-                { id: 'executive' as PanelId, icon: <LayoutDashboard className="h-4 w-4" />, label: 'Visão executiva' },
-                { id: 'kanban' as PanelId, icon: <KanbanSquare className="h-4 w-4" />, label: 'Kanban de entregas' },
-                { id: 'qa' as PanelId, icon: <ShieldCheck className="h-4 w-4" />, label: 'Área de QA' },
-                { id: 'automation' as PanelId, icon: <Bot className="h-4 w-4" />, label: 'IA e automação' },
-                { id: 'integrations' as PanelId, icon: <GitBranch className="h-4 w-4" />, label: 'Integrações' },
-                { id: 'settings' as PanelId, icon: <Settings className="h-4 w-4" />, label: 'Configurações' },
-              ] as const
-            ).map((section) => (
-              <SidebarItem
-                key={section.id}
-                active={activeSection === section.id}
-                icon={section.icon}
-                label={section.label}
-                onClick={() => handleSidebarClick(section.id)}
-              />
-            ))}
-          </div>
-
-          <div className="mt-8 rounded-[28px] border border-white/10 bg-white/5 p-4">
-            <div className="text-sm font-semibold text-white">Integrações ativas</div>
-            <div className="mt-3 space-y-3 text-sm text-slate-300">
-              <div className="flex items-center justify-between"><span>GitHub</span><Badge className="rounded-full bg-emerald-500/20 text-emerald-200">Online</Badge></div>
-              <div className="flex items-center justify-between"><span>n8n</span><Badge className="rounded-full bg-emerald-500/20 text-emerald-200">Online</Badge></div>
-            </div>
-          </div>
-        </aside>
-
-        <main className="col-span-12 px-6 py-6 lg:col-span-10 lg:px-8 lg:py-8">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-fuchsia-400/20 bg-fuchsia-400/10 px-3 py-1 text-xs font-medium text-fuchsia-200">
-                <Sparkles className="h-3.5 w-3.5" />
-                SaaS visual PRO
-              </div>
-              <h1 className="mt-4 text-4xl font-black tracking-tight text-white md:text-5xl">
-                Um board bonito, forte e com cara de produto vendável.
-              </h1>
-              <p className="mt-3 max-w-4xl text-base leading-7 text-slate-300">
-                O PO descreve o valor de negócio e os critérios de aceite. A IA transforma isso em cenários sugeridos. O QA refina, ajusta ou cria manualmente, enquanto o fluxo segue integrado com n8n e GitHub.
-              </p>
-              {syncMessage && (
-                <div
-                  className={cn(
-                    'mt-4 rounded-2xl border px-4 py-3 text-sm',
-                    syncStatus === 'pending'
-                      ? 'border-slate-500 bg-slate-950/80 text-slate-100'
-                      : syncStatus === 'success'
-                      ? 'border-emerald-400 bg-emerald-500/10 text-emerald-200'
-                      : 'border-amber-400 bg-amber-500/10 text-amber-200'
-                  )}
-                >
-                  {syncMessage}
+    return (
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(217,70,239,0.16),_transparent_22%),radial-gradient(circle_at_top_right,_rgba(59,130,246,0.14),_transparent_20%),linear-gradient(180deg,#060816_0%,#0b1020_45%,#0a0f1d_100%)] text-white">
+        <main className="mx-auto flex min-h-screen w-full max-w-[1680px] flex-col px-4 py-4 sm:px-6 lg:px-8 lg:py-8">
+          <div className="rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.03))] p-4 shadow-[0_35px_90px_-40px_rgba(8,15,30,0.95)] backdrop-blur-2xl sm:p-5">
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+              <div className="space-y-5">
+                <div className="flex flex-wrap items-center gap-3">
+                  <OrionLogo />
+                  <Badge className="rounded-full border-0 bg-cyan-500/10 px-3 py-1 text-cyan-100">Workspace principal</Badge>
+                  <Badge className="rounded-full border-0 bg-white/10 px-3 py-1 text-slate-200">Central de Entregas</Badge>
                 </div>
-              )}
 
-              {currentAccount?.tenantId && !currentTenant && (
-                <div className="mt-4 rounded-2xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="mt-0.5 h-4 w-4 text-amber-300" />
-                    <div className="space-y-1">
-                      <div className="font-semibold">Tenant não encontrado no banco conectado</div>
-                      <div className="text-amber-100/80">
-                        A conta existe, mas a linha correspondente em <span className="font-semibold">tenants</span> não foi localizada.
-                        Os dados de integração dependem desse registro para aparecerem no front.
-                      </div>
-                      <div className="text-xs text-amber-100/70">
-                        Tenant ID: <span className="font-mono">{currentAccount.tenantId}</span>
+                <div>
+                  <h1 className="text-4xl font-black tracking-tight text-white md:text-5xl">Painel de entregas Orion</h1>
+                  <p className="mt-3 max-w-4xl text-base leading-7 text-slate-300">
+                    Organize discovery, refinamento, desenvolvimento, QA e execução em um fluxo único, com visual mais limpo e foco no que realmente precisa avançar.
+                  </p>
+                </div>
+
+                {syncMessage && (
+                  <div
+                    className={cn(
+                      'rounded-2xl border px-4 py-3 text-sm',
+                      syncStatus === 'pending'
+                        ? 'border-slate-500 bg-slate-950/80 text-slate-100'
+                        : syncStatus === 'success'
+                        ? 'border-emerald-400 bg-emerald-500/10 text-emerald-200'
+                        : 'border-amber-400 bg-amber-500/10 text-amber-200'
+                    )}
+                  >
+                    {syncMessage}
+                  </div>
+                )}
+
+                {currentAccount?.tenantId && !currentTenant && (
+                  <div className="rounded-2xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="mt-0.5 h-4 w-4 text-amber-300" />
+                      <div className="space-y-1">
+                        <div className="font-semibold">Tenant não encontrado no banco conectado</div>
+                        <div className="text-amber-100/80">
+                          A conta existe, mas a linha correspondente em <span className="font-semibold">tenants</span> não foi localizada.
+                          Os dados de integração dependem desse registro para aparecerem no front.
+                        </div>
+                        <div className="text-xs text-amber-100/70">
+                          Tenant ID: <span className="font-mono">{currentAccount.tenantId}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-300">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-fuchsia-500/15 text-fuchsia-200">
-                  {currentAccount?.companyName?.[0]?.toUpperCase() || 'A'}
-                </div>
-                <div>
-                  <div className="font-semibold text-white">{currentAccount?.companyName || 'Conta ativa'}</div>
-                  <div className="text-[11px] text-slate-400">{currentTenant?.slug ? `Tenant: ${currentTenant.slug}` : currentAccount?.email}</div>
-                </div>
+                )}
               </div>
 
-              <Button
-                variant="outline"
-                className="h-11 rounded-2xl border-white/10 bg-white/5 px-5 text-white hover:bg-white/10"
-                onClick={handleLogout}
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Sair
-              </Button>
+              <div className="flex flex-col items-stretch gap-3 xl:min-w-[320px] xl:max-w-[360px]">
+                <div className="rounded-[28px] border border-white/10 bg-black/20 p-4 shadow-[0_25px_60px_-40px_rgba(34,211,238,0.85)]">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-3 rounded-[22px] border border-white/10 bg-white/5 px-4 py-3 text-left transition hover:bg-white/10"
+                      >
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-fuchsia-500/15 text-sm font-bold text-fuchsia-100">
+                          {currentAccount?.companyName?.[0]?.toUpperCase() || 'O'}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-semibold text-white">{currentAccount?.companyName || 'Orion'}</div>
+                          <div className="truncate text-[11px] text-slate-400">
+                            {currentTenant?.slug ? `Tenant: ${currentTenant.slug}` : currentAccount?.email}
+                          </div>
+                        </div>
+                        <ChevronDown className="h-4 w-4 text-slate-300" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-64 rounded-2xl border-white/10 bg-[#0b1220] p-2 text-white">
+                      <DropdownMenuItem className="rounded-xl text-slate-200 focus:bg-white/10 focus:text-white" onClick={() => handleSidebarClick('integrations')}>
+                        <GitBranch className="mr-2 h-4 w-4" />
+                        Integrações
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="rounded-xl text-slate-200 focus:bg-white/10 focus:text-white" onClick={() => handleSidebarClick('settings')}>
+                        <Settings className="mr-2 h-4 w-4" />
+                        Configurações
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="rounded-xl text-slate-200 focus:bg-white/10 focus:text-white" onClick={() => router.push('/admin')}>
+                        <Database className="mr-2 h-4 w-4" />
+                        Painel administrativo
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="bg-white/10" />
+                      <DropdownMenuItem className="rounded-xl text-rose-200 focus:bg-rose-500/10 focus:text-rose-100" onClick={handleLogout}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Sair
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
 
-              <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogTrigger asChild>
-                  <Button className="h-11 rounded-2xl bg-gradient-to-r from-fuchsia-600 to-violet-600 px-5 text-white shadow-[0_18px_45px_-18px_rgba(217,70,239,0.95)] hover:from-fuchsia-500 hover:to-violet-500">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Nova entrega
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="border-white/10 bg-[#090d1a] text-white sm:max-w-3xl rounded-[32px]">
-                  <DialogHeader>
-                    <DialogTitle className="text-2xl font-black">Criar entrega PO → QA</DialogTitle>
-                    <DialogDescription className="text-slate-400">
-                      Critérios de aceite aqui podem virar cenários sugeridos automaticamente pela IA e seguir para o fluxo do n8n.
-                    </DialogDescription>
-                  </DialogHeader>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Input value={form.epic} onChange={(e) => setForm((prev) => ({ ...prev, epic: e.target.value }))} placeholder="Épico" className="rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500" />
-                    <Input value={form.module} onChange={(e) => setForm((prev) => ({ ...prev, module: e.target.value }))} placeholder="Módulo" className="rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500" />
-                    <Input value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} placeholder="Título da entrega" className="md:col-span-2 rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500" />
-                    <Textarea value={form.businessGoal} onChange={(e) => setForm((prev) => ({ ...prev, businessGoal: e.target.value }))} placeholder="Objetivo de negócio" className="md:col-span-2 min-h-[110px] rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500" />
-                    <Textarea value={form.acceptanceCriteria} onChange={(e) => setForm((prev) => ({ ...prev, acceptanceCriteria: e.target.value }))} placeholder="Critérios de aceite (um por linha)" className="md:col-span-2 min-h-[150px] rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500" />
-                    <Textarea value={form.qaNotes} onChange={(e) => setForm((prev) => ({ ...prev, qaNotes: e.target.value }))} placeholder="Notas iniciais de QA" className="md:col-span-2 min-h-[110px] rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500" />
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                      <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Sistema</div>
+                      <div className="mt-1 text-sm font-semibold text-white">Orion</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                      <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Visão ativa</div>
+                      <div className="mt-1 text-sm font-semibold text-white">Pipeline de entregas</div>
+                    </div>
                   </div>
-
-                  <div className="mt-2 flex justify-end gap-2">
-                    <Button variant="outline" className="rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white-10" onClick={() => setCreateOpen(false)}>
-                      Cancelar
-                    </Button>
-                    <Button className="rounded-2xl bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white hover:from-fuchsia-500 hover:to-violet-500" onClick={handleCreate}>
-                      Criar entrega
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-
-              <Button
-                variant="outline"
-                className="h-11 rounded-2xl border-white/10 bg-white/5 px-5 text-white hover:bg-white-10"
-                onClick={() => router.push('/admin')}
-              >
-                <Database className="mr-2 h-4 w-4" />
-                Admin
-              </Button>
-
-              <Button
-                variant="outline"
-                className="h-11 rounded-2xl border-white/10 bg-white/5 px-5 text-white hover:bg-white-10"
-                onClick={() => handleSidebarClick('settings')}
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                Configurações
-              </Button>
+                </div>
+              </div>
             </div>
           </div>
 
           <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard title="Cards de entrega" value={cards.length} subtitle="Escopo ativo entre PO e QA" glow="bg-gradient-to-r from-fuchsia-500 to-violet-500" />
-            <StatCard title="Cenários totais" value={totalScenarios} subtitle="Manuais + IA" glow="bg-gradient-to-r from-cyan-500 to-sky-500" />
-            <StatCard title="Gerados por IA" value={totalAi} subtitle="Prontos para refinamento" glow="bg-gradient-to-r from-violet-500 to-fuchsia-500" />
-            <StatCard title="Ready for QA" value={totalReady} subtitle="Itens refinados para teste" glow="bg-gradient-to-r from-emerald-500 to-lime-500" />
+            <StatCard title="Entregas no fluxo" value={cards.length} subtitle="Itens acompanhados no Orion" glow="bg-gradient-to-r from-fuchsia-500 to-violet-500" />
+            <StatCard title="Cenários mapeados" value={totalScenarios} subtitle="Manuais e assistidos por IA" glow="bg-gradient-to-r from-cyan-500 to-sky-500" />
+            <StatCard title="Sugestões por IA" value={totalAi} subtitle="Cenários com apoio inteligente" glow="bg-gradient-to-r from-violet-500 to-fuchsia-500" />
+            <StatCard title="Prontos para QA" value={totalReady} subtitle="Cards preparados para validação" glow="bg-gradient-to-r from-emerald-500 to-lime-500" />
           </div>
 
           <div className="mt-8 grid gap-6 xl:grid-cols-12">
@@ -1194,24 +1149,41 @@ export default function Page() {
               setSelectedId={setSelectedId}
               setDetailOpen={setDetailOpen}
               moveCard={moveCard}
+              onCreateInColumn={openCreateDialog}
             />
           </div>
 
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogContent className="rounded-[32px] border-white/10 bg-[#090d1a] text-white sm:max-w-3xl">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-black">Nova entrega em {columns.find((column) => column.id === createColumn)?.title}</DialogTitle>
+                <DialogDescription className="text-slate-400">
+                  Cadastre o item no estágio certo do fluxo e evolua depois no board do Orion.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <Input value={form.epic} onChange={(e) => setForm((prev) => ({ ...prev, epic: e.target.value }))} placeholder="Epico" className="rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500" />
+                <Input value={form.module} onChange={(e) => setForm((prev) => ({ ...prev, module: e.target.value }))} placeholder="Modulo" className="rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500" />
+                <Input value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} placeholder="Titulo da entrega" className="rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500 md:col-span-2" />
+                <Textarea value={form.businessGoal} onChange={(e) => setForm((prev) => ({ ...prev, businessGoal: e.target.value }))} placeholder="Objetivo de negocio" className="min-h-[110px] rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500 md:col-span-2" />
+                <Textarea value={form.acceptanceCriteria} onChange={(e) => setForm((prev) => ({ ...prev, acceptanceCriteria: e.target.value }))} placeholder="Criterios de aceite (um por linha)" className="min-h-[150px] rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500 md:col-span-2" />
+                <Textarea value={form.qaNotes} onChange={(e) => setForm((prev) => ({ ...prev, qaNotes: e.target.value }))} placeholder="Notas iniciais de QA" className="min-h-[110px] rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500 md:col-span-2" />
+              </div>
+
+              <div className="mt-2 flex justify-end gap-2">
+                <Button variant="outline" className="rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10" onClick={() => setCreateOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button className="rounded-2xl bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white hover:from-fuchsia-500 hover:to-violet-500" onClick={handleCreate}>
+                  Criar entrega
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
           <Dialog open={panelOpen} onOpenChange={setPanelOpen}>
             <DialogContent className="flex h-[96vh] max-h-[96vh] w-[min(1480px,calc(100vw-1rem))] flex-col overflow-hidden rounded-[32px] border-white/10 bg-[#090d1a] p-0 text-white sm:max-w-[1480px]">
-              {activeSection === 'executive' && (
-                <ExecutiveSection
-                  syncMessage={syncMessage}
-                  syncStatus={syncStatus}
-                  createOpen={createOpen}
-                  setCreateOpen={setCreateOpen}
-                  form={form}
-                  setForm={setForm}
-                  handleCreate={handleCreate}
-                  openPanel={handleSidebarClick}
-                />
-              )}
-
               {activeSection === 'criteria' && (
                 <CriteriaSection
                   selectedCard={selectedCard}
@@ -1259,7 +1231,6 @@ export default function Page() {
             </DialogContent>
           </Dialog>
         </main>
-      </div>
 
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="flex max-h-[88vh] w-[min(960px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[32px] border-white/10 bg-[#090d1a] p-0 text-white sm:max-w-5xl">
