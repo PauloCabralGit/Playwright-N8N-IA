@@ -270,13 +270,14 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(217,70,239,0.18),_transparent_22%),radial-gradient(circle_at_bottom_right,_rgba(34,211,238,0.12),_transparent_20%),linear-gradient(180deg,#060816_0%,#0b1020_45%,#0a0f1d_100%)] px-4 py-4 text-white sm:px-6 lg:px-8 lg:py-8">
-      <div className="mx-auto grid min-h-[calc(100vh-2rem)] max-w-[1480px] gap-6 lg:grid-cols-[1.02fr_0.98fr]">
-        <Card className="overflow-hidden rounded-[36px] border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))] backdrop-blur-2xl shadow-[0_30px_90px_-35px_rgba(15,23,42,0.95)]">
+      <div className="mx-auto max-w-[1480px] rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.03))] p-3 shadow-[0_35px_90px_-40px_rgba(8,15,30,0.95)] backdrop-blur-2xl sm:p-4">
+        <div className="grid min-h-[calc(100vh-2.5rem)] gap-6 lg:grid-cols-[1.02fr_0.98fr]">
+        <Card className="overflow-hidden rounded-[36px] border-white/10 bg-[linear-gradient(180deg,rgba(10,15,26,0.96),rgba(11,18,32,0.88))] backdrop-blur-2xl shadow-[0_30px_90px_-35px_rgba(15,23,42,0.95)]">
           <CardContent className="flex h-full flex-col justify-between p-7 sm:p-9">
             <div>
               <div className="flex flex-wrap items-center gap-3">
                 <OrionLogo />
-                <Badge className="rounded-full border-0 bg-fuchsia-500/15 text-fuchsia-200">Orion Platform</Badge>
+                <Badge className="rounded-full border border-fuchsia-400/20 bg-fuchsia-500/10 text-fuchsia-200">Orion Platform</Badge>
               </div>
 
               <h1 className="mt-8 text-4xl font-black tracking-tight text-white md:text-5xl">{accentText}</h1>
@@ -290,7 +291,7 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
                 { icon: <CheckCircle2 className="h-4 w-4" />, title: 'Fluxo completo', text: 'Da descoberta a execucao, tudo fica organizado no mesmo produto.' },
                 { icon: <Sparkles className="h-4 w-4" />, title: 'Visual Orion', text: 'Uma frente mais forte, clara e preparada para uso real do time.' },
               ].map((item) => (
-                <div key={item.title} className="rounded-[28px] border border-white/10 bg-black/20 p-4 shadow-[0_20px_50px_-35px_rgba(8,15,30,0.95)]">
+                <div key={item.title} className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.025))] p-4 shadow-[0_20px_50px_-35px_rgba(8,15,30,0.95)]">
                   <div className="flex items-center gap-2 text-sm font-semibold text-white">
                     <div className="flex h-8 w-8 items-center justify-center rounded-2xl bg-fuchsia-500/15 text-fuchsia-200">
                       {item.icon}
@@ -317,7 +318,7 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
               </div>
 
               {showModeSwitch && (
-                <div className="rounded-full border border-white/10 bg-white/5 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                <div className="rounded-full border border-white/10 bg-slate-950/70 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
                   <Button
                     variant={mode === 'login' ? 'default' : 'ghost'}
                     className={cn('rounded-full px-4 text-xs', mode === 'login' ? 'bg-fuchsia-600 text-white' : 'text-slate-300')}
@@ -497,12 +498,13 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
               </div>
             )}
 
-            <div className="mt-6 flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-300">
+            <div className="mt-6 flex items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/65 px-4 py-3 text-xs text-slate-300">
               <Lock className="h-4 w-4 text-fuchsia-300" />
               O tenant e o workflow sao criados por empresa. O webhook e fixo e a conta certa e escolhida pelo tenant enviado no payload.
             </div>
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );
