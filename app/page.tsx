@@ -1198,7 +1198,7 @@ export default function Page() {
           </div>
 
           <Dialog open={panelOpen} onOpenChange={setPanelOpen}>
-            <DialogContent className="flex max-h-[92vh] w-[min(1200px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[32px] border-white/10 bg-[#090d1a] text-white sm:max-w-6xl">
+            <DialogContent className="flex h-[96vh] max-h-[96vh] w-[min(1480px,calc(100vw-1rem))] flex-col overflow-hidden rounded-[32px] border-white/10 bg-[#090d1a] p-0 text-white sm:max-w-[1480px]">
               {activeSection === 'executive' && (
                 <ExecutiveSection
                   syncMessage={syncMessage}
@@ -1221,18 +1221,20 @@ export default function Page() {
                 />
               )}
 
-              {activeSection === 'qa' && (
-                <QaSection
-                  selectedCard={selectedCard}
-                  teamMembers={teamMembers}
-                  moveCard={moveCard}
-                  generateAiScenario={generateAiScenario}
-                  onCardChange={handleCardChange}
-                  onScenarioChange={handleScenarioChange}
-                  onDeleteScenario={handleDeleteScenario}
-                  onAddScenario={handleAddScenario}
-                />
-              )}
+                {activeSection === 'qa' && (
+                  <div className="flex min-h-0 flex-1 overflow-hidden p-4 sm:p-5">
+                    <QaSection
+                      selectedCard={selectedCard}
+                      teamMembers={teamMembers}
+                      moveCard={moveCard}
+                      generateAiScenario={generateAiScenario}
+                      onCardChange={handleCardChange}
+                      onScenarioChange={handleScenarioChange}
+                      onDeleteScenario={handleDeleteScenario}
+                      onAddScenario={handleAddScenario}
+                    />
+                  </div>
+                )}
 
               {activeSection === 'automation' && <AutomationSection totalAi={totalAi} generateAiScenario={generateAiScenario} />}
 

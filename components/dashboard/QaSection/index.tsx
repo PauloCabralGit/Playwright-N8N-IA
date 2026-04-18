@@ -35,10 +35,14 @@ function sectionSurface(className = '') {
   return `rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] shadow-[0_20px_55px_-35px_rgba(8,15,30,0.95)] ${className}`;
 }
 
-function fieldClassName(size: 'input' | 'textarea' = 'input') {
-  return size === 'textarea'
-    ? 'min-h-[150px] rounded-2xl border-slate-800 bg-slate-950/80 px-4 py-3 text-[15px] leading-7 text-white placeholder:text-slate-500'
+function fieldClassName(kind: 'input' | 'textarea' = 'input') {
+  return kind === 'textarea'
+    ? 'min-h-[110px] rounded-2xl border-slate-800 bg-slate-950/80 px-4 py-3 text-[15px] leading-6 text-white placeholder:text-slate-500'
     : 'h-12 rounded-2xl border-slate-800 bg-slate-950/80 px-4 text-[15px] text-white placeholder:text-slate-500';
+}
+
+function SmallFieldLabel({ children }: { children: React.ReactNode }) {
+  return <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">{children}</div>;
 }
 
 export function QaSection({
@@ -58,9 +62,9 @@ export function QaSection({
   return (
     <Card
       id="qa"
-      className="flex max-h-[calc(92vh-6rem)] flex-col overflow-hidden rounded-[32px] border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.12),transparent_24%),radial-gradient(circle_at_top_left,rgba(217,70,239,0.12),transparent_20%),linear-gradient(180deg,#0d1320_0%,#09101b_100%)] p-7 shadow-[0_30px_90px_-35px_rgba(8,15,30,0.95)]"
+      className="flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[32px] border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.12),transparent_24%),radial-gradient(circle_at_top_left,rgba(217,70,239,0.12),transparent_20%),linear-gradient(180deg,#0d1320_0%,#09101b_100%)] p-5 shadow-[0_30px_90px_-35px_rgba(8,15,30,0.95)] sm:p-6"
     >
-      <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -95,18 +99,18 @@ export function QaSection({
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className={sectionSurface('p-5')}>
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className={sectionSurface('p-4')}>
             <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Cenários</div>
             <div className="mt-2 text-3xl font-black text-white">{totalScenarios}</div>
             <div className="mt-1 text-sm text-slate-400">Total vinculado à task</div>
           </div>
-          <div className={sectionSurface('p-5')}>
+          <div className={sectionSurface('p-4')}>
             <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Prontos</div>
             <div className="mt-2 text-3xl font-black text-emerald-200">{totalReady}</div>
             <div className="mt-1 text-sm text-slate-400">Ready ou Automated</div>
           </div>
-          <div className={sectionSurface('p-5')}>
+          <div className={sectionSurface('p-4')}>
             <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Reprovados</div>
             <div className="mt-2 text-3xl font-black text-rose-200">{totalFailed}</div>
             <div className="mt-1 text-sm text-slate-400">Execuções com falha</div>
@@ -114,30 +118,30 @@ export function QaSection({
         </div>
       </div>
 
-      <Tabs defaultValue="card" className="mt-7 flex min-h-0 flex-1 flex-col">
+      <Tabs defaultValue="card" className="mt-5 flex min-h-0 flex-1 flex-col overflow-hidden">
         <TabsList className="grid w-full grid-cols-3 gap-2 rounded-[24px] border border-white/10 bg-slate-950/90 p-2">
           <TabsTrigger
             value="card"
-            className="min-h-12 rounded-2xl border border-transparent px-4 py-3 font-sans text-sm font-semibold tracking-[0.02em] text-slate-200 transition-all hover:border-white/10 hover:bg-white/5 hover:text-white data-[state=active]:border-cyan-300/30 data-[state=active]:bg-cyan-400/12 data-[state=active]:text-white data-[state=active]:shadow-[0_12px_30px_-18px_rgba(34,211,238,0.75)]"
+            className="min-h-12 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold tracking-[0.02em] text-slate-200 transition-all hover:border-white/10 hover:bg-white/5 hover:text-white data-[state=active]:border-cyan-300/30 data-[state=active]:bg-cyan-400/12 data-[state=active]:text-white"
           >
             Card
           </TabsTrigger>
           <TabsTrigger
             value="scenarios"
-            className="min-h-12 rounded-2xl border border-transparent px-4 py-3 font-sans text-sm font-semibold tracking-[0.02em] text-slate-200 transition-all hover:border-white/10 hover:bg-white/5 hover:text-white data-[state=active]:border-fuchsia-300/30 data-[state=active]:bg-fuchsia-400/12 data-[state=active]:text-white data-[state=active]:shadow-[0_12px_30px_-18px_rgba(217,70,239,0.7)]"
+            className="min-h-12 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold tracking-[0.02em] text-slate-200 transition-all hover:border-white/10 hover:bg-white/5 hover:text-white data-[state=active]:border-fuchsia-300/30 data-[state=active]:bg-fuchsia-400/12 data-[state=active]:text-white"
           >
             Cenários
           </TabsTrigger>
           <TabsTrigger
             value="execution"
-            className="min-h-12 rounded-2xl border border-transparent px-4 py-3 font-sans text-sm font-semibold tracking-[0.02em] text-slate-200 transition-all hover:border-white/10 hover:bg-white/5 hover:text-white data-[state=active]:border-emerald-300/30 data-[state=active]:bg-emerald-400/12 data-[state=active]:text-white data-[state=active]:shadow-[0_12px_30px_-18px_rgba(52,211,153,0.7)]"
+            className="min-h-12 rounded-2xl border border-transparent px-4 py-3 text-sm font-semibold tracking-[0.02em] text-slate-200 transition-all hover:border-white/10 hover:bg-white/5 hover:text-white data-[state=active]:border-emerald-300/30 data-[state=active]:bg-emerald-400/12 data-[state=active]:text-white"
           >
             Execução
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="card" className="mt-6 min-h-0 flex-1 space-y-5 overflow-y-auto pr-2">
-          <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <TabsContent value="card" className="mt-5 min-h-0 flex-1 space-y-5 overflow-y-auto overflow-x-hidden pr-2 pb-4">
+          <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
             <div className={sectionSurface('p-5')}>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
@@ -197,7 +201,7 @@ export function QaSection({
                 <Textarea
                   value={selectedCard.qaNotes || ''}
                   onChange={(event) => onCardChange({ ...selectedCard, qaNotes: event.target.value })}
-                  className={`mt-3 min-h-[160px] ${fieldClassName('textarea')}`}
+                  className={`mt-3 min-h-[140px] ${fieldClassName('textarea')}`}
                 />
               </div>
             </div>
@@ -230,7 +234,7 @@ export function QaSection({
           </div>
         </TabsContent>
 
-        <TabsContent value="scenarios" className="mt-6 min-h-0 flex-1 space-y-5 overflow-y-auto pr-2">
+        <TabsContent value="scenarios" className="mt-5 min-h-0 flex-1 space-y-5 overflow-y-auto overflow-x-hidden pr-2 pb-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-sm font-semibold text-slate-100">Cenários vinculados</div>
@@ -280,7 +284,7 @@ export function QaSection({
                     </Button>
                   </div>
 
-                  <div className="grid gap-3 p-4 md:grid-cols-2">
+                  <div className="grid gap-3 p-4 xl:grid-cols-2">
                     <Input
                       value={scenario.title}
                       onChange={(event) => onScenarioChange(scenario.id, { title: event.target.value })}
@@ -302,19 +306,19 @@ export function QaSection({
                       value={scenario.objective || ''}
                       onChange={(event) => onScenarioChange(scenario.id, { objective: event.target.value })}
                       placeholder="Objetivo do cenário"
-                      className={`md:col-span-2 min-h-[90px] ${fieldClassName('textarea')}`}
+                      className={`xl:col-span-2 min-h-[90px] ${fieldClassName('textarea')}`}
                     />
                     <Textarea
                       value={scenario.steps || ''}
                       onChange={(event) => onScenarioChange(scenario.id, { steps: event.target.value })}
                       placeholder="Passos do teste"
-                      className={fieldClassName('textarea')}
+                      className={`min-h-[110px] ${fieldClassName('textarea')}`}
                     />
                     <Textarea
                       value={scenario.expectedResult || ''}
                       onChange={(event) => onScenarioChange(scenario.id, { expectedResult: event.target.value })}
                       placeholder="Resultado esperado"
-                      className={fieldClassName('textarea')}
+                      className={`min-h-[110px] ${fieldClassName('textarea')}`}
                     />
                   </div>
                 </div>
@@ -323,7 +327,7 @@ export function QaSection({
           </div>
         </TabsContent>
 
-        <TabsContent value="execution" className="mt-6 min-h-0 flex-1 space-y-5 overflow-y-auto pr-2">
+        <TabsContent value="execution" className="mt-5 min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden pr-2 pb-4">
           {selectedCard.scenarios.length === 0 ? (
             <div className="rounded-[26px] border border-dashed border-slate-700 bg-slate-950/40 px-5 py-6 text-sm text-slate-400">
               Nenhum cenário disponível para execução ainda.
@@ -343,7 +347,7 @@ export function QaSection({
               };
 
               return (
-                <div key={`${scenario.id}-execution`} className={`rounded-[26px] border p-5 shadow-[0_20px_55px_-35px_rgba(8,15,30,0.95)] ${renderStatusTone(execution.status)}`}>
+                  <div key={`${scenario.id}-execution`} className={`rounded-[26px] border p-6 shadow-[0_20px_55px_-35px_rgba(8,15,30,0.95)] ${renderStatusTone(execution.status)}`}>
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <div className="text-base font-semibold">{scenario.title}</div>
@@ -389,112 +393,136 @@ export function QaSection({
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-3 xl:grid-cols-4 md:grid-cols-2">
-                    <Input
-                      type="number"
-                      min={0}
-                      value={execution.estimatedMinutes}
-                      onChange={(event) =>
-                        onScenarioChange(scenario.id, {
-                          execution: {
-                            ...execution,
-                            estimatedMinutes: Number(event.target.value || 0),
-                          },
-                        })
-                      }
-                      className={fieldClassName()}
-                      placeholder="Tempo estimado"
-                    />
-                    <Input
-                      type="number"
-                      min={0}
-                      value={execution.actualMinutes}
-                      onChange={(event) =>
-                        onScenarioChange(scenario.id, {
-                          execution: {
-                            ...execution,
-                            actualMinutes: Number(event.target.value || 0),
-                          },
-                        })
-                      }
-                      className={fieldClassName()}
-                      placeholder="Tempo real"
-                    />
-                    <Select
-                      value={execution.executedBy || selectedCard.ownerId || selectedCard.owner}
-                      onValueChange={(value) =>
-                        onScenarioChange(scenario.id, {
-                          execution: {
-                            ...execution,
-                            executedBy: value,
-                          },
-                        })
-                      }
-                    >
-                      <SelectTrigger className={`w-full ${fieldClassName()}`}>
-                        <SelectValue placeholder="Quem executou" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {teamMembers.map((member) => (
-                          <SelectItem key={`${scenario.id}-${member.id}`} value={member.name}>
-                            {member.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select
-                      value={execution.bugSource}
-                      onValueChange={(value) =>
-                        onScenarioChange(scenario.id, {
-                          execution: {
-                            ...execution,
-                            bugSource: value as 'IA' | 'Manual' | 'None',
-                          },
-                        })
-                      }
-                    >
-                      <SelectTrigger className={`w-full ${fieldClassName()}`}>
-                        <SelectValue placeholder="Abertura de bug" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="None">Sem bug</SelectItem>
-                        <SelectItem value="Manual">Bug manual</SelectItem>
-                        <SelectItem value="IA">Bug por IA</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="mt-5 grid gap-3 2xl:grid-cols-4 lg:grid-cols-2">
+                    <div className="space-y-2">
+                      <SmallFieldLabel>Tempo estimado</SmallFieldLabel>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={execution.estimatedMinutes}
+                        onChange={(event) =>
+                          onScenarioChange(scenario.id, {
+                            execution: {
+                              ...execution,
+                              estimatedMinutes: Number(event.target.value || 0),
+                            },
+                          })
+                        }
+                        className={fieldClassName()}
+                        placeholder="Tempo estimado"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <SmallFieldLabel>Tempo real</SmallFieldLabel>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={execution.actualMinutes}
+                        onChange={(event) =>
+                          onScenarioChange(scenario.id, {
+                            execution: {
+                              ...execution,
+                              actualMinutes: Number(event.target.value || 0),
+                            },
+                          })
+                        }
+                        className={fieldClassName()}
+                        placeholder="Tempo real"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <SmallFieldLabel>Quem executou</SmallFieldLabel>
+                      <Select
+                        value={execution.executedBy || selectedCard.ownerId || selectedCard.owner}
+                        onValueChange={(value) =>
+                          onScenarioChange(scenario.id, {
+                            execution: {
+                              ...execution,
+                              executedBy: value,
+                            },
+                          })
+                        }
+                      >
+                        <SelectTrigger className={`w-full ${fieldClassName()}`}>
+                          <SelectValue placeholder="Quem executou" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {teamMembers.map((member) => (
+                            <SelectItem key={`${scenario.id}-${member.id}`} value={member.name}>
+                              {member.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <SmallFieldLabel>Abertura de bug</SmallFieldLabel>
+                      <Select
+                        value={execution.bugSource}
+                        onValueChange={(value) =>
+                          onScenarioChange(scenario.id, {
+                            execution: {
+                              ...execution,
+                              bugSource: value as 'IA' | 'Manual' | 'None',
+                            },
+                          })
+                        }
+                      >
+                        <SelectTrigger className={`w-full ${fieldClassName()}`}>
+                          <SelectValue placeholder="Abertura de bug" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="None">Sem bug</SelectItem>
+                          <SelectItem value="Manual">Bug manual</SelectItem>
+                          <SelectItem value="IA">Bug por IA</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
-                  <div className="mt-3 grid gap-3 xl:grid-cols-[1.05fr_1.05fr_0.9fr] lg:grid-cols-2">
-                    <Textarea
-                      value={execution.notes}
-                      onChange={(event) =>
-                        onScenarioChange(scenario.id, {
-                          execution: {
-                            ...execution,
-                            notes: event.target.value,
-                          },
-                        })
-                      }
-                      placeholder="Notas da execução"
-                      className={`min-h-[96px] ${fieldClassName('textarea')}`}
-                    />
-                    <Textarea
-                      value={execution.evidences.join('\n')}
-                      onChange={(event) =>
-                        onScenarioChange(scenario.id, {
-                          execution: {
-                            ...execution,
-                            evidences: event.target.value
-                              .split('\n')
-                              .map((item) => item.trim())
-                              .filter(Boolean),
-                          },
-                        })
-                      }
-                      placeholder="Cole links ou descrições das evidências, uma por linha"
-                      className={`min-h-[96px] ${fieldClassName('textarea')}`}
-                    />
+                    <div className="mt-5 grid gap-4 2xl:grid-cols-[1.05fr_1.05fr_0.9fr] lg:grid-cols-2">
+                    <div className="space-y-2">
+                      <SmallFieldLabel>Notas da execução</SmallFieldLabel>
+                      <Textarea
+                        value={execution.notes}
+                        onChange={(event) =>
+                          onScenarioChange(scenario.id, {
+                            execution: {
+                              ...execution,
+                              notes: event.target.value,
+                            },
+                          })
+                        }
+                        placeholder="Observações importantes da execução"
+                        className={`min-h-[96px] ${fieldClassName('textarea')}`}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <SmallFieldLabel>Evidências</SmallFieldLabel>
+                      <Textarea
+                        value={execution.evidences.join('\n')}
+                        onChange={(event) =>
+                          onScenarioChange(scenario.id, {
+                            execution: {
+                              ...execution,
+                              evidences: event.target.value
+                                .split('\n')
+                                .map((item) => item.trim())
+                                .filter(Boolean),
+                            },
+                          })
+                        }
+                        placeholder="Cole links ou descrições das evidências, uma por linha"
+                        className={`min-h-[96px] ${fieldClassName('textarea')}`}
+                      />
+                    </div>
+
                     <div className="space-y-3">
+                      <SmallFieldLabel>Bug</SmallFieldLabel>
                       <Input
                         value={execution.bugTitle}
                         onChange={(event) =>
@@ -519,7 +547,7 @@ export function QaSection({
                           })
                         }
                         placeholder="Descrição do bug"
-                        className={`min-h-[110px] ${fieldClassName('textarea')}`}
+                        className={`min-h-[96px] ${fieldClassName('textarea')}`}
                       />
                     </div>
                   </div>
