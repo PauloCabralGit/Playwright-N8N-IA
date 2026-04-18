@@ -428,6 +428,7 @@ export default function Page() {
     setN8nDraftSettings(nextSettings);
     setHasUnsavedN8nSettings(false);
     setN8nConnectionVerified(false);
+    setN8nConnectionMessage('Configuração salva. Clique em Testar conexão para validar o webhook.');
   }, []);
 
   const mergeN8nSettings = (primary: Partial<N8nSettings>, fallback?: Partial<N8nSettings>): N8nSettings => ({
