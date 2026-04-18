@@ -702,18 +702,24 @@ export default function Page() {
       console.error('Failed to persist board card', error);
     }
 
-    if (action === 'create' || action === 'update') {
-      void syncWithN8n(normalizedCard, action);
+    if (settings.autoSync && (action === 'create' || action === 'update')) {
+      void syncWithN8n(normalizedCard, action, { quietOnBlock: true, quietOnFailure: true });
     }
   };
 
-  const syncWithN8n = async (card: DeliveryCard, action: 'create' | 'move' | 'update') => {
+  const syncWithN8n = async (
+    card: DeliveryCard,
+    action: 'create' | 'move' | 'update',
+    options?: { quietOnBlock?: boolean; quietOnFailure?: boolean }
+  ) => {
     const blockingReason = getN8nBlockingReason();
 
     if (blockingReason) {
-      setSyncStatus('error');
-      setSyncMessage(`Integração n8n bloqueada: ${blockingReason}`);
-      clearSyncMessage();
+      if (!options?.quietOnBlock) {
+        setSyncStatus('error');
+        setSyncMessage(`Integração n8n bloqueada: ${blockingReason}`);
+        clearSyncMessage();
+      }
       return;
     }
 
@@ -735,9 +741,13 @@ export default function Page() {
 
       if (!response.ok) {
         const text = await response.text().catch(() => 'Erro desconhecido');
-        setSyncStatus('error');
-        setSyncMessage(`Erro ao sincronizar com n8n: ${text}`);
-        clearSyncMessage();
+        if (!options?.quietOnFailure) {
+          setSyncStatus('error');
+          setSyncMessage(`Erro ao sincronizar com n8n: ${text}`);
+          clearSyncMessage();
+        } else {
+          console.warn('Falha silenciosa ao sincronizar com n8n:', text);
+        }
         return;
       }
 
@@ -745,9 +755,13 @@ export default function Page() {
       setSyncMessage('Sincronização enviada ao n8n.');
       clearSyncMessage();
     } catch (error) {
-      setSyncStatus('error');
-      setSyncMessage(`Erro na integração com n8n: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-      clearSyncMessage();
+      if (!options?.quietOnFailure) {
+        setSyncStatus('error');
+        setSyncMessage(`Erro na integração com n8n: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+        clearSyncMessage();
+      } else {
+        console.warn('Falha silenciosa na integração com n8n:', error);
+      }
     }
   };
 
@@ -887,14 +901,6 @@ export default function Page() {
   const totalReady = cards.filter((card) => card.column === 'qa').length;
 
   const handleCreate = () => {
-    const blockingReason = getN8nBlockingReason();
-    if (blockingReason) {
-      setSyncStatus('error');
-      setSyncMessage(`Integração n8n bloqueada: ${blockingReason}`);
-      clearSyncMessage();
-      return;
-    }
-
     const acceptanceCriteria = form.acceptanceCriteria
       .split('\n')
       .map((item) => item.trim())
@@ -970,18 +976,12 @@ export default function Page() {
   };
 
   const moveCard = async (cardId: string, newColumn: ColumnId) => {
-    const blockingReason = getN8nBlockingReason();
-    if (blockingReason) {
-      setSyncStatus('error');
-      setSyncMessage(`Integração n8n bloqueada: ${blockingReason}`);
-      clearSyncMessage();
-      return;
-    }
-
     const card = cards.find((item) => item.id === cardId);
     if (card) {
       setCards((prev) => prev.map((item) => (item.id === cardId ? { ...item, column: newColumn } : item)));
-      void syncWithN8n({ ...card, column: newColumn }, 'move');
+      if (settings.autoSync) {
+        void syncWithN8n({ ...card, column: newColumn }, 'move', { quietOnBlock: true, quietOnFailure: true });
+      }
     }
   };
 
