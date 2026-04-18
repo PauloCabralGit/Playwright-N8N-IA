@@ -1200,6 +1200,8 @@ export default function Page() {
                       teamMembers={teamMembers}
                       moveCard={moveCard}
                       generateAiScenario={generateAiScenario}
+                      syncStatus={syncStatus}
+                      syncMessage={syncMessage}
                       onCardChange={handleCardChange}
                       onScenarioChange={handleScenarioChange}
                       onDeleteScenario={handleDeleteScenario}

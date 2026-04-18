@@ -14,6 +14,8 @@ type QaSectionProps = {
   teamMembers: TeamMember[];
   moveCard: (cardId: string, newColumn: ColumnId) => void;
   generateAiScenario: () => void;
+  syncStatus?: 'idle' | 'pending' | 'success' | 'error';
+  syncMessage?: string | null;
   onCardChange: (card: DeliveryCard) => void;
   onScenarioChange: (scenarioId: string, patch: Partial<Scenario>) => void;
   onDeleteScenario: (scenarioId: string) => void;
@@ -50,6 +52,8 @@ export function QaSection({
   teamMembers,
   moveCard,
   generateAiScenario,
+  syncStatus = 'idle',
+  syncMessage = null,
   onCardChange,
   onScenarioChange,
   onDeleteScenario,
@@ -98,6 +102,20 @@ export function QaSection({
             </Button>
           </div>
         </div>
+
+        {syncMessage && (
+          <div
+            className={`rounded-2xl border px-4 py-3 text-sm ${
+              syncStatus === 'pending'
+                ? 'border-slate-500 bg-slate-950/80 text-slate-100'
+                : syncStatus === 'success'
+                ? 'border-emerald-400/50 bg-emerald-500/10 text-emerald-200'
+                : 'border-amber-400/50 bg-amber-500/10 text-amber-100'
+            }`}
+          >
+            {syncMessage}
+          </div>
+        )}
 
         <div className="grid gap-3 md:grid-cols-3">
           <div className={sectionSurface('p-4')}>
