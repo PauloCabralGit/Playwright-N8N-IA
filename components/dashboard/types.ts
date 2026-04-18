@@ -56,6 +56,12 @@ export type DeliveryCard = {
   ownerId?: string;
   businessGoal: string;
   acceptanceCriteria: string[];
+  commitDate?: string;
+  dueDate?: string;
+  devStartedAt?: string;
+  devCompletedAt?: string;
+  devEstimatedHours?: number;
+  devActualHours?: number;
   estimatedExecutionMinutes?: number;
   qaNotes: string;
   scenarios: Scenario[];
@@ -68,6 +74,12 @@ export type CreateFormState = {
   businessGoal: string;
   acceptanceCriteria: string;
   qaNotes: string;
+  commitDate: string;
+  dueDate: string;
+  devStartedAt: string;
+  devCompletedAt: string;
+  devEstimatedHours: string;
+  devActualHours: string;
 };
 
 export type SectionSettings = {

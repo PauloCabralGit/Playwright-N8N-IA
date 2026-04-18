@@ -1,4 +1,4 @@
-import { GripVertical, Layers3, UserRound } from 'lucide-react';
+import { CalendarClock, GripVertical, Layers3, TimerReset, UserRound } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 import { Badge } from '@/components/ui/badge';
@@ -46,11 +46,27 @@ export function DeliveryBoardCard({ card, onOpen, onDragStart }: DeliveryBoardCa
               <div className="mt-2 line-clamp-2 text-[15px] font-semibold leading-5 text-slate-50">{card.title}</div>
               <div className="mt-3 flex items-center gap-2 text-sm text-slate-300">
                 <UserRound className="h-4 w-4 shrink-0 text-slate-400" />
-                <span className="truncate">{card.owner || 'Sem responsável'}</span>
+                <span className="truncate">{card.owner || 'Sem responsavel'}</span>
               </div>
               <div className="mt-3 flex items-center gap-2 text-xs text-slate-400">
                 <Layers3 className="h-3.5 w-3.5 text-fuchsia-300/70" />
-                <span className="truncate">{card.epic || 'Sem épico'}</span>
+                <span className="truncate">{card.epic || 'Sem epico'}</span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-slate-300">
+                <div className="rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-2">
+                  <div className="flex items-center gap-1 text-slate-400">
+                    <CalendarClock className="h-3.5 w-3.5" />
+                    <span>Due</span>
+                  </div>
+                  <div className="mt-1 font-semibold text-slate-100">{card.dueDate || 'Sem data'}</div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-2">
+                  <div className="flex items-center gap-1 text-slate-400">
+                    <TimerReset className="h-3.5 w-3.5" />
+                    <span>Horas Dev</span>
+                  </div>
+                  <div className="mt-1 font-semibold text-slate-100">{Number(card.devActualHours || card.devEstimatedHours || 0)}h</div>
+                </div>
               </div>
             </div>
           </div>

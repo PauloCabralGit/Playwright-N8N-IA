@@ -6,6 +6,7 @@ import {
   AlertCircle,
   Bot,
   ChevronDown,
+  Clock3,
   Database,
   FileText,
   GitBranch,
@@ -31,6 +32,7 @@ import { AutomationSection } from '@/components/dashboard/AutomationSection';
 import { IntegrationsSection } from '@/components/dashboard/IntegrationsSection';
 import { SettingsSection } from '@/components/dashboard/SettingsSection';
 import { OrionLogo } from '@/components/dashboard/OrionLogo';
+import { TimingDashboardSection } from '@/components/dashboard/TimingDashboardSection';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -207,6 +209,12 @@ export default function Page() {
     businessGoal: '',
     acceptanceCriteria: '',
     qaNotes: '',
+    commitDate: '',
+    dueDate: '',
+    devStartedAt: '',
+    devCompletedAt: '',
+    devEstimatedHours: '',
+    devActualHours: '',
   });
   const [syncStatus, setSyncStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
@@ -548,6 +556,12 @@ export default function Page() {
 
   const normalizeCardForUi = useCallback((card: DeliveryCard): DeliveryCard => ({
     ...card,
+    commitDate: card.commitDate || '',
+    dueDate: card.dueDate || '',
+    devStartedAt: card.devStartedAt || '',
+    devCompletedAt: card.devCompletedAt || '',
+    devEstimatedHours: Number(card.devEstimatedHours || 0),
+    devActualHours: Number(card.devActualHours || 0),
     estimatedExecutionMinutes: card.estimatedExecutionMinutes || 0,
     scenarios: (card.scenarios || []).map((scenario) => ({
       ...scenario,
@@ -692,7 +706,20 @@ export default function Page() {
 
   const openCreateDialog = (column: ColumnId) => {
     setCreateColumn(column);
-    setForm({ epic: '', title: '', module: '', businessGoal: '', acceptanceCriteria: '', qaNotes: '' });
+    setForm({
+      epic: '',
+      title: '',
+      module: '',
+      businessGoal: '',
+      acceptanceCriteria: '',
+      qaNotes: '',
+      commitDate: '',
+      dueDate: '',
+      devStartedAt: '',
+      devCompletedAt: '',
+      devEstimatedHours: '',
+      devActualHours: '',
+    });
     setCreateOpen(true);
   };
 
@@ -991,6 +1018,8 @@ export default function Page() {
         card.epic,
         card.module,
         card.businessGoal,
+        card.commitDate || '',
+        card.dueDate || '',
         card.owner,
         card.acceptanceCriteria.join(' '),
         card.scenarios.map((scenario) => scenario.title).join(' '),
@@ -1031,6 +1060,12 @@ export default function Page() {
       ownerId: teamMembers[0]?.id || '',
       businessGoal: form.businessGoal || 'Sem objetivo informado.',
       acceptanceCriteria,
+      commitDate: form.commitDate || '',
+      dueDate: form.dueDate || '',
+      devStartedAt: form.devStartedAt || '',
+      devCompletedAt: form.devCompletedAt || '',
+      devEstimatedHours: Number(form.devEstimatedHours || 0),
+      devActualHours: Number(form.devActualHours || 0),
       estimatedExecutionMinutes: Math.max(acceptanceCriteria.length * 10, 15),
       qaNotes: form.qaNotes,
       scenarios: acceptanceCriteria.length && shouldSeedScenario
@@ -1053,7 +1088,20 @@ export default function Page() {
     setActiveSection('kanban');
     setPanelOpen(false);
     setCreateOpen(false);
-    setForm({ epic: '', title: '', module: '', businessGoal: '', acceptanceCriteria: '', qaNotes: '' });
+    setForm({
+      epic: '',
+      title: '',
+      module: '',
+      businessGoal: '',
+      acceptanceCriteria: '',
+      qaNotes: '',
+      commitDate: '',
+      dueDate: '',
+      devStartedAt: '',
+      devCompletedAt: '',
+      devEstimatedHours: '',
+      devActualHours: '',
+    });
 
     void persistBoardCard(newCard, 'create');
   };
@@ -1188,6 +1236,10 @@ export default function Page() {
                         <Settings className="mr-2 h-4 w-4" />
                         Configurações
                       </DropdownMenuItem>
+                      <DropdownMenuItem className="rounded-xl text-slate-200 focus:bg-white/10 focus:text-white" onClick={() => handleSidebarClick('executive')}>
+                        <Clock3 className="mr-2 h-4 w-4" />
+                        Dashboard de tempos
+                      </DropdownMenuItem>
                       <DropdownMenuItem className="rounded-xl text-slate-200 focus:bg-white/10 focus:text-white" onClick={() => router.push('/admin')}>
                         <Database className="mr-2 h-4 w-4" />
                         Painel administrativo
@@ -1248,6 +1300,12 @@ export default function Page() {
                 <Input value={form.epic} onChange={(e) => setForm((prev) => ({ ...prev, epic: e.target.value }))} placeholder="Epico" className="rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500" />
                 <Input value={form.module} onChange={(e) => setForm((prev) => ({ ...prev, module: e.target.value }))} placeholder="Modulo" className="rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500" />
                 <Input value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} placeholder="Titulo da entrega" className="rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500 md:col-span-2" />
+                <Input type="date" value={form.commitDate} onChange={(e) => setForm((prev) => ({ ...prev, commitDate: e.target.value }))} className="rounded-2xl border-white/10 bg-white/5 text-white" />
+                <Input type="date" value={form.dueDate} onChange={(e) => setForm((prev) => ({ ...prev, dueDate: e.target.value }))} className="rounded-2xl border-white/10 bg-white/5 text-white" />
+                <Input type="date" value={form.devStartedAt} onChange={(e) => setForm((prev) => ({ ...prev, devStartedAt: e.target.value }))} className="rounded-2xl border-white/10 bg-white/5 text-white" />
+                <Input type="date" value={form.devCompletedAt} onChange={(e) => setForm((prev) => ({ ...prev, devCompletedAt: e.target.value }))} className="rounded-2xl border-white/10 bg-white/5 text-white" />
+                <Input type="number" min={0} value={form.devEstimatedHours} onChange={(e) => setForm((prev) => ({ ...prev, devEstimatedHours: e.target.value }))} placeholder="Horas estimadas Dev" className="rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500" />
+                <Input type="number" min={0} value={form.devActualHours} onChange={(e) => setForm((prev) => ({ ...prev, devActualHours: e.target.value }))} placeholder="Horas reais Dev" className="rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500" />
                 <Textarea value={form.businessGoal} onChange={(e) => setForm((prev) => ({ ...prev, businessGoal: e.target.value }))} placeholder="Objetivo de negocio" className="min-h-[110px] rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500 md:col-span-2" />
                 <Textarea value={form.acceptanceCriteria} onChange={(e) => setForm((prev) => ({ ...prev, acceptanceCriteria: e.target.value }))} placeholder="Criterios de aceite (um por linha)" className="min-h-[150px] rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500 md:col-span-2" />
                 <Textarea value={form.qaNotes} onChange={(e) => setForm((prev) => ({ ...prev, qaNotes: e.target.value }))} placeholder="Notas iniciais de QA" className="min-h-[110px] rounded-2xl border-white/10 bg-white/5 text-white placeholder:text-slate-500 md:col-span-2" />
@@ -1273,6 +1331,12 @@ export default function Page() {
                   setDetailOpen={setDetailOpen}
                   setActiveSection={setActiveSection}
                 />
+              )}
+
+              {activeSection === 'executive' && (
+                <div className="flex min-h-0 flex-1 overflow-hidden p-4 sm:p-5">
+                  <TimingDashboardSection cards={cards} />
+                </div>
               )}
 
                 {activeSection === 'qa' && (
@@ -1337,6 +1401,84 @@ export default function Page() {
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-slate-100 shadow-[0_20px_50px_-35px_rgba(15,23,42,0.95)]">
                   <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Módulo</div>
                   <div className="mt-2 font-semibold text-white">{selectedCard.module}</div>
+                </div>
+              </div>
+
+              <div className="rounded-[26px] border border-white/10 bg-white/5 p-5 text-slate-100 shadow-[0_20px_50px_-35px_rgba(15,23,42,0.95)]">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                    <Clock3 className="h-4 w-4 text-cyan-400" />
+                    Datas e tempos da entrega
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10"
+                    onClick={() => {
+                      setDetailOpen(false);
+                      setActiveSection('executive');
+                      setPanelOpen(true);
+                    }}
+                  >
+                    Dashboard de tempos
+                  </Button>
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  <div className="space-y-2">
+                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Commit date</div>
+                    <Input
+                      type="date"
+                      value={selectedCard.commitDate || ''}
+                      onChange={(e) => handleCardChange({ ...selectedCard, commitDate: e.target.value })}
+                      className="rounded-2xl border-white/10 bg-slate-950/70 text-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Due date</div>
+                    <Input
+                      type="date"
+                      value={selectedCard.dueDate || ''}
+                      onChange={(e) => handleCardChange({ ...selectedCard, dueDate: e.target.value })}
+                      className="rounded-2xl border-white/10 bg-slate-950/70 text-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Horas estimadas Dev</div>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={selectedCard.devEstimatedHours || 0}
+                      onChange={(e) => handleCardChange({ ...selectedCard, devEstimatedHours: Number(e.target.value || 0) })}
+                      className="rounded-2xl border-white/10 bg-slate-950/70 text-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Horas reais Dev</div>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={selectedCard.devActualHours || 0}
+                      onChange={(e) => handleCardChange({ ...selectedCard, devActualHours: Number(e.target.value || 0) })}
+                      className="rounded-2xl border-white/10 bg-slate-950/70 text-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Inicio Dev</div>
+                    <Input
+                      type="date"
+                      value={selectedCard.devStartedAt || ''}
+                      onChange={(e) => handleCardChange({ ...selectedCard, devStartedAt: e.target.value })}
+                      className="rounded-2xl border-white/10 bg-slate-950/70 text-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Conclusao Dev</div>
+                    <Input
+                      type="date"
+                      value={selectedCard.devCompletedAt || ''}
+                      onChange={(e) => handleCardChange({ ...selectedCard, devCompletedAt: e.target.value })}
+                      className="rounded-2xl border-white/10 bg-slate-950/70 text-white"
+                    />
+                  </div>
                 </div>
               </div>
 
