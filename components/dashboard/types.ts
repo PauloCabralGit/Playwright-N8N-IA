@@ -1,4 +1,4 @@
-export type ColumnId = 'discovery' | 'refinement' | 'qa' | 'testing' | 'done';
+export type ColumnId = 'discovery' | 'refinement' | 'development' | 'qa' | 'testing' | 'done';
 export type Priority = 'Baixa' | 'Media' | 'Média' | 'Alta';
 
 export type PanelId =

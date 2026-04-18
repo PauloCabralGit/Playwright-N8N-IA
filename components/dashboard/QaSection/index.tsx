@@ -37,8 +37,8 @@ function sectionSurface(className = '') {
 
 function fieldClassName(size: 'input' | 'textarea' = 'input') {
   return size === 'textarea'
-    ? 'min-h-[120px] border-slate-800 bg-slate-950/80 text-white placeholder:text-slate-500'
-    : 'border-slate-800 bg-slate-950/80 text-white placeholder:text-slate-500';
+    ? 'min-h-[150px] rounded-2xl border-slate-800 bg-slate-950/80 px-4 py-3 text-[15px] leading-7 text-white placeholder:text-slate-500'
+    : 'h-12 rounded-2xl border-slate-800 bg-slate-950/80 px-4 text-[15px] text-white placeholder:text-slate-500';
 }
 
 export function QaSection({
@@ -58,7 +58,7 @@ export function QaSection({
   return (
     <Card
       id="qa"
-      className="flex max-h-[calc(88vh-7rem)] flex-col overflow-hidden rounded-[32px] border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.12),transparent_24%),radial-gradient(circle_at_top_left,rgba(217,70,239,0.12),transparent_20%),linear-gradient(180deg,#0d1320_0%,#09101b_100%)] p-6 shadow-[0_30px_90px_-35px_rgba(8,15,30,0.95)]"
+      className="flex max-h-[calc(92vh-6rem)] flex-col overflow-hidden rounded-[32px] border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.12),transparent_24%),radial-gradient(circle_at_top_left,rgba(217,70,239,0.12),transparent_20%),linear-gradient(180deg,#0d1320_0%,#09101b_100%)] p-7 shadow-[0_30px_90px_-35px_rgba(8,15,30,0.95)]"
     >
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -69,8 +69,8 @@ export function QaSection({
               <Badge className="rounded-full border-0 bg-fuchsia-500/10 text-fuchsia-100">{selectedCard.epic}</Badge>
             </div>
             <div>
-              <h2 className="text-2xl font-black tracking-tight text-white">Área de QA</h2>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
+              <h2 className="text-3xl font-black tracking-tight text-white">Área de QA</h2>
+              <p className="mt-2 max-w-3xl text-[15px] leading-7 text-slate-400">
                 Reforce critérios, gere cenários, execute testes, registre evidências e mantenha a task pronta para entrega sem perder contexto.
               </p>
             </div>
@@ -95,39 +95,48 @@ export function QaSection({
           </div>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className={sectionSurface('p-4')}>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className={sectionSurface('p-5')}>
             <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Cenários</div>
-            <div className="mt-2 text-2xl font-black text-white">{totalScenarios}</div>
-            <div className="mt-1 text-xs text-slate-400">Total vinculado à task</div>
+            <div className="mt-2 text-3xl font-black text-white">{totalScenarios}</div>
+            <div className="mt-1 text-sm text-slate-400">Total vinculado à task</div>
           </div>
-          <div className={sectionSurface('p-4')}>
+          <div className={sectionSurface('p-5')}>
             <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Prontos</div>
-            <div className="mt-2 text-2xl font-black text-emerald-200">{totalReady}</div>
-            <div className="mt-1 text-xs text-slate-400">Ready ou Automated</div>
+            <div className="mt-2 text-3xl font-black text-emerald-200">{totalReady}</div>
+            <div className="mt-1 text-sm text-slate-400">Ready ou Automated</div>
           </div>
-          <div className={sectionSurface('p-4')}>
+          <div className={sectionSurface('p-5')}>
             <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Reprovados</div>
-            <div className="mt-2 text-2xl font-black text-rose-200">{totalFailed}</div>
-            <div className="mt-1 text-xs text-slate-400">Execuções com falha</div>
+            <div className="mt-2 text-3xl font-black text-rose-200">{totalFailed}</div>
+            <div className="mt-1 text-sm text-slate-400">Execuções com falha</div>
           </div>
         </div>
       </div>
 
-      <Tabs defaultValue="card" className="mt-6 flex min-h-0 flex-1 flex-col">
+      <Tabs defaultValue="card" className="mt-7 flex min-h-0 flex-1 flex-col">
         <TabsList className="grid w-full grid-cols-3 rounded-2xl border border-white/10 bg-slate-950/80 p-1">
-          <TabsTrigger value="card" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-slate-950">
+          <TabsTrigger
+            value="card"
+            className="rounded-xl px-4 py-3 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white data-[state=active]:bg-white data-[state=active]:text-slate-950"
+          >
             Card
           </TabsTrigger>
-          <TabsTrigger value="scenarios" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-slate-950">
+          <TabsTrigger
+            value="scenarios"
+            className="rounded-xl px-4 py-3 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white data-[state=active]:bg-white data-[state=active]:text-slate-950"
+          >
             Cenários
           </TabsTrigger>
-          <TabsTrigger value="execution" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-slate-950">
+          <TabsTrigger
+            value="execution"
+            className="rounded-xl px-4 py-3 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white data-[state=active]:bg-white data-[state=active]:text-slate-950"
+          >
             Execução
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="card" className="mt-5 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+        <TabsContent value="card" className="mt-6 min-h-0 flex-1 space-y-5 overflow-y-auto pr-2">
           <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
             <div className={sectionSurface('p-5')}>
               <div className="grid gap-4 md:grid-cols-2">
@@ -221,7 +230,7 @@ export function QaSection({
           </div>
         </TabsContent>
 
-        <TabsContent value="scenarios" className="mt-5 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+        <TabsContent value="scenarios" className="mt-6 min-h-0 flex-1 space-y-5 overflow-y-auto pr-2">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-sm font-semibold text-slate-100">Cenários vinculados</div>
@@ -314,7 +323,7 @@ export function QaSection({
           </div>
         </TabsContent>
 
-        <TabsContent value="execution" className="mt-5 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+        <TabsContent value="execution" className="mt-6 min-h-0 flex-1 space-y-5 overflow-y-auto pr-2">
           {selectedCard.scenarios.length === 0 ? (
             <div className="rounded-[26px] border border-dashed border-slate-700 bg-slate-950/40 px-5 py-6 text-sm text-slate-400">
               Nenhum cenário disponível para execução ainda.

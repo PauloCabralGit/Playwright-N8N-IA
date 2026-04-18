@@ -20,6 +20,7 @@ type KanbanSectionProps = {
 const columnGlow: Record<ColumnId, string> = {
   discovery: 'from-sky-500/30 to-cyan-500/10',
   refinement: 'from-amber-500/30 to-orange-500/10',
+  development: 'from-violet-500/30 to-indigo-500/10',
   qa: 'from-fuchsia-500/30 to-violet-500/10',
   testing: 'from-emerald-500/30 to-lime-500/10',
   done: 'from-cyan-400/30 to-emerald-400/10',
@@ -69,7 +70,7 @@ export function KanbanSection({
         </CardContent>
       </Card>
 
-      <div className="mt-5 grid gap-4 xl:grid-cols-5 md:grid-cols-2">
+      <div className="mt-5 grid gap-4 md:grid-cols-2 2xl:grid-cols-6 xl:grid-cols-3">
         {columns.map((column) => (
           <Card
             key={column.id}

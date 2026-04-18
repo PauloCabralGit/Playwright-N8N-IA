@@ -39,6 +39,7 @@ import type { ColumnId, DeliveryCard, N8nSettings, PanelId, Scenario, TeamMember
 const columns: { id: ColumnId; title: string; hint: string }[] = [
   { id: 'discovery', title: 'Discovery', hint: 'Ideias e entendimento de negócio' },
   { id: 'refinement', title: 'Refinement', hint: 'Critérios de aceite e detalhamento' },
+  { id: 'development', title: 'Desenvolvimento', hint: 'Implementação técnica e ajustes da entrega' },
   { id: 'qa', title: 'Ready for QA', hint: 'Pronto para gerar/revisar cenários' },
   { id: 'testing', title: 'Testing', hint: 'Execução manual e automação' },
   { id: 'done', title: 'Done', hint: 'Testado, sincronizado e entregue' },
@@ -986,9 +987,6 @@ export default function Page() {
     const card = cards.find((item) => item.id === cardId);
     if (card) {
       setCards((prev) => prev.map((item) => (item.id === cardId ? { ...item, column: newColumn } : item)));
-      if (settings.autoSync) {
-        void syncWithN8n({ ...card, column: newColumn }, 'move', { quietOnBlock: true, quietOnFailure: true });
-      }
     }
   };
 
@@ -1200,7 +1198,7 @@ export default function Page() {
           </div>
 
           <Dialog open={panelOpen} onOpenChange={setPanelOpen}>
-            <DialogContent className="border-white/10 bg-[#090d1a] text-white sm:max-w-4xl rounded-[32px] max-h-[90vh] overflow-y-auto flex flex-col">
+            <DialogContent className="flex max-h-[92vh] w-[min(1200px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[32px] border-white/10 bg-[#090d1a] text-white sm:max-w-6xl">
               {activeSection === 'executive' && (
                 <ExecutiveSection
                   syncMessage={syncMessage}
