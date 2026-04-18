@@ -1,5 +1,6 @@
-import { Bot, Clock3, Plus, Save, ShieldAlert, ShieldCheck, UserRound } from 'lucide-react';
+import { Bot, Clock3, Plus, Save, ShieldAlert, ShieldCheck, Trash2, UserRound } from 'lucide-react';
 
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,7 @@ type QaSectionProps = {
   generateAiScenario: () => void;
   onCardChange: (card: DeliveryCard) => void;
   onScenarioChange: (scenarioId: string, patch: Partial<Scenario>) => void;
+  onDeleteScenario: (scenarioId: string) => void;
   onAddScenario: () => void;
 };
 
@@ -36,6 +38,7 @@ export function QaSection({
   generateAiScenario,
   onCardChange,
   onScenarioChange,
+  onDeleteScenario,
   onAddScenario,
 }: QaSectionProps) {
   return (
@@ -142,54 +145,97 @@ export function QaSection({
         </TabsContent>
 
         <TabsContent value="scenarios" className="mt-4 space-y-4">
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-slate-100">Cenários vinculados</div>
+              <div className="mt-1 text-xs text-slate-400">Edite os cenários existentes ou remova o que não fizer mais sentido.</div>
+            </div>
             <Button variant="outline" onClick={onAddScenario}>
               <Plus className="mr-2 h-4 w-4" />
               Cenario manual
             </Button>
           </div>
           <div className="space-y-4">
-            {selectedCard.scenarios.map((scenario) => (
-              <div key={scenario.id} className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-                <div className="grid gap-3 md:grid-cols-2">
-                  <Input
-                    value={scenario.title}
-                    onChange={(event) => onScenarioChange(scenario.id, { title: event.target.value })}
-                    className="border-slate-800 bg-slate-900 text-white"
-                  />
-                  <Select
-                    value={scenario.source}
-                    onValueChange={(value) => onScenarioChange(scenario.id, { source: value as Scenario['source'] })}
-                  >
-                    <SelectTrigger className="w-full border-slate-800 bg-slate-900 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Manual">Manual</SelectItem>
-                      <SelectItem value="IA">IA</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Textarea
-                    value={scenario.objective || ''}
-                    onChange={(event) => onScenarioChange(scenario.id, { objective: event.target.value })}
-                    placeholder="Objetivo do cenario"
-                    className="min-h-[90px] border-slate-800 bg-slate-900 text-white md:col-span-2"
-                  />
-                  <Textarea
-                    value={scenario.steps || ''}
-                    onChange={(event) => onScenarioChange(scenario.id, { steps: event.target.value })}
-                    placeholder="Passos do teste"
-                    className="min-h-[120px] border-slate-800 bg-slate-900 text-white"
-                  />
-                  <Textarea
-                    value={scenario.expectedResult || ''}
-                    onChange={(event) => onScenarioChange(scenario.id, { expectedResult: event.target.value })}
-                    placeholder="Resultado esperado"
-                    className="min-h-[120px] border-slate-800 bg-slate-900 text-white"
-                  />
-                </div>
+            {selectedCard.scenarios.length === 0 ? (
+              <div className="rounded-[26px] border border-dashed border-slate-700 bg-slate-950/40 px-5 py-6 text-sm text-slate-400">
+                Nenhum cenário criado ainda. Use <span className="font-semibold text-slate-200">Cenário manual</span> ou <span className="font-semibold text-cyan-200">Geração IA</span>.
               </div>
-            ))}
+            ) : (
+              selectedCard.scenarios.map((scenario) => (
+                <div
+                  key={scenario.id}
+                  className="overflow-hidden rounded-[26px] border border-slate-800 bg-[radial-gradient(circle_at_top_right,rgba(217,70,239,0.12),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.9),rgba(9,16,27,0.92))] shadow-[0_20px_55px_-35px_rgba(8,15,30,0.95)]"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 px-4 py-4">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge className="rounded-full border-0 bg-white/10 text-[10px] tracking-[0.18em] text-slate-200">
+                          {scenario.id}
+                        </Badge>
+                        <Badge
+                          className={
+                            scenario.source === 'IA'
+                              ? 'rounded-full border-0 bg-fuchsia-500/15 text-fuchsia-200'
+                              : 'rounded-full border-0 bg-cyan-500/15 text-cyan-200'
+                          }
+                        >
+                          {scenario.source}
+                        </Badge>
+                        <Badge className="rounded-full border-0 bg-emerald-500/10 text-emerald-200">
+                          {scenario.status}
+                        </Badge>
+                      </div>
+                      <div className="mt-2 text-sm text-slate-400">Cenário da task {selectedCard.id}</div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="rounded-2xl border-rose-400/30 bg-rose-500/10 text-rose-100 hover:bg-rose-500/15"
+                      onClick={() => onDeleteScenario(scenario.id)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Excluir
+                    </Button>
+                  </div>
+                  <div className="grid gap-3 p-4 md:grid-cols-2">
+                    <Input
+                      value={scenario.title}
+                      onChange={(event) => onScenarioChange(scenario.id, { title: event.target.value })}
+                      className="border-slate-800 bg-slate-900 text-white"
+                    />
+                    <Select
+                      value={scenario.source}
+                      onValueChange={(value) => onScenarioChange(scenario.id, { source: value as Scenario['source'] })}
+                    >
+                      <SelectTrigger className="w-full border-slate-800 bg-slate-900 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Manual">Manual</SelectItem>
+                        <SelectItem value="IA">IA</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Textarea
+                      value={scenario.objective || ''}
+                      onChange={(event) => onScenarioChange(scenario.id, { objective: event.target.value })}
+                      placeholder="Objetivo do cenario"
+                      className="min-h-[90px] border-slate-800 bg-slate-900 text-white md:col-span-2"
+                    />
+                    <Textarea
+                      value={scenario.steps || ''}
+                      onChange={(event) => onScenarioChange(scenario.id, { steps: event.target.value })}
+                      placeholder="Passos do teste"
+                      className="min-h-[120px] border-slate-800 bg-slate-900 text-white"
+                    />
+                    <Textarea
+                      value={scenario.expectedResult || ''}
+                      onChange={(event) => onScenarioChange(scenario.id, { expectedResult: event.target.value })}
+                      placeholder="Resultado esperado"
+                      className="min-h-[120px] border-slate-800 bg-slate-900 text-white"
+                    />
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </TabsContent>
 

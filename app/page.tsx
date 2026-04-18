@@ -16,6 +16,7 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -863,6 +864,15 @@ export default function Page() {
     void persistBoardCard(updatedCard, 'update');
   };
 
+  const handleDeleteScenario = (scenarioId: string) => {
+    const updatedCard = {
+      ...selectedCard,
+      scenarios: selectedCard.scenarios.filter((scenario) => scenario.id !== scenarioId),
+    };
+
+    void persistBoardCard(updatedCard, 'update');
+  };
+
   const selectedCard = useMemo(
     () => cards.find((card) => card.id === selectedId) || cards[0],
     [cards, selectedId]
@@ -1221,6 +1231,7 @@ export default function Page() {
                   generateAiScenario={generateAiScenario}
                   onCardChange={handleCardChange}
                   onScenarioChange={handleScenarioChange}
+                  onDeleteScenario={handleDeleteScenario}
                   onAddScenario={handleAddScenario}
                 />
               )}
@@ -1329,7 +1340,17 @@ export default function Page() {
                           <div className="text-xs text-slate-400">{scenario.id}</div>
                           <div className="mt-1 break-words text-sm font-semibold text-slate-100">{scenario.title}</div>
                         </div>
-                        <ScenarioBadge source={scenario.source} />
+                        <div className="flex items-center gap-2">
+                          <ScenarioBadge source={scenario.source} />
+                          <Button
+                            variant="outline"
+                            size="icon-sm"
+                            className="rounded-2xl border-rose-400/30 bg-rose-500/10 text-rose-100 hover:bg-rose-500/15"
+                            onClick={() => handleDeleteScenario(scenario.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
