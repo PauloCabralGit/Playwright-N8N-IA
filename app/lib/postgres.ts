@@ -5,7 +5,7 @@ type GlobalWithPostgres = typeof globalThis & {
   __qaPgSchemaVersion?: string;
 };
 
-const SCHEMA_VERSION = '2026-04-14-discord-bot-fields';
+const SCHEMA_VERSION = '2026-04-18-scenario-artifacts';
 
 function getDatabaseUrl() {
   const url =
@@ -223,6 +223,57 @@ async function ensureSchema() {
 
           CREATE INDEX IF NOT EXISTS idx_card_history_tenant_id ON card_history(tenant_id);
           CREATE INDEX IF NOT EXISTS idx_card_history_card_id ON card_history(card_id);
+
+CREATE TABLE IF NOT EXISTS scenario_records (
+  tenant_id TEXT NOT NULL,
+  card_id TEXT NOT NULL,
+  scenario_id TEXT NOT NULL,
+  scenario JSONB NOT NULL,
+            source_type TEXT NOT NULL DEFAULT 'Manual',
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (tenant_id, scenario_id)
+          );
+
+CREATE INDEX IF NOT EXISTS idx_scenario_records_tenant_id ON scenario_records(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_scenario_records_card_id ON scenario_records(card_id);
+
+CREATE TABLE IF NOT EXISTS scenario_execution_records (
+  tenant_id TEXT NOT NULL,
+  card_id TEXT NOT NULL,
+  scenario_id TEXT NOT NULL,
+  execution JSONB NOT NULL,
+  status TEXT NOT NULL DEFAULT 'Not Run',
+  executed_by TEXT NOT NULL DEFAULT '',
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, scenario_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_scenario_execution_records_tenant_id ON scenario_execution_records(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_scenario_execution_records_card_id ON scenario_execution_records(card_id);
+
+CREATE TABLE IF NOT EXISTS scenario_bug_records (
+  tenant_id TEXT NOT NULL,
+  scenario_id TEXT NOT NULL,
+  bug_source TEXT NOT NULL DEFAULT 'None',
+  bug_title TEXT NOT NULL DEFAULT '',
+  bug_description TEXT NOT NULL DEFAULT '',
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, scenario_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_scenario_bug_records_tenant_id ON scenario_bug_records(tenant_id);
+
+CREATE TABLE IF NOT EXISTS scenario_evidence_records (
+  tenant_id TEXT NOT NULL,
+  scenario_id TEXT NOT NULL,
+  evidence_index INTEGER NOT NULL,
+  evidence_value TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (tenant_id, scenario_id, evidence_index)
+);
+
+CREATE INDEX IF NOT EXISTS idx_scenario_evidence_records_tenant_id ON scenario_evidence_records(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_scenario_evidence_records_scenario_id ON scenario_evidence_records(scenario_id);
 
           CREATE TABLE IF NOT EXISTS password_reset_tokens (
             id TEXT PRIMARY KEY,

@@ -1,6 +1,13 @@
 import type { ColumnId, DeliveryCard, Scenario } from '@/components/dashboard/types';
 import { randomUUID } from 'crypto';
 import { dbQuery } from '@/app/lib/postgres';
+import {
+  backfillScenarioRecordsForCard,
+  deleteAllScenarioRecordsForCard,
+  deleteRemovedScenarios,
+  loadScenarioRecordsByTenant,
+  syncScenarioRecordsForCard,
+} from '@/app/lib/scenario-store';
 
 const baseExecution = (estimatedMinutes = 10) => ({
   estimatedMinutes,
@@ -150,12 +157,12 @@ async function ensureTenantCards(tenantId: string) {
   }
 }
 
-function toCard(row: { card: DeliveryCard }) {
+function toCard(row: { card: DeliveryCard }): DeliveryCard {
   const card = row.card;
   return {
     ...card,
     acceptanceCriteria: [...card.acceptanceCriteria],
-    scenarios: card.scenarios.map((scenario) => ({
+    scenarios: card.scenarios.map((scenario): Scenario => ({
       ...scenario,
       execution: scenario.execution
         ? {
@@ -197,7 +204,20 @@ export async function getBoardCards(tenantId: string) {
     [tenantId],
   );
 
-  return result.rows.map((row: { card: DeliveryCard }) => toCard(row));
+  const cards = result.rows.map((row: { card: DeliveryCard }) => toCard(row));
+  const scenariosByCard = await loadScenarioRecordsByTenant(tenantId);
+
+  for (const card of cards) {
+    const persistedScenarios = scenariosByCard.get(card.id);
+    if (persistedScenarios && persistedScenarios.length > 0) {
+      card.scenarios = persistedScenarios;
+      continue;
+    }
+
+    await backfillScenarioRecordsForCard(tenantId, card.id, card.scenarios || []);
+  }
+
+  return cards;
 }
 
 export async function setBoardCards(tenantId: string, cards: DeliveryCard[]) {
@@ -208,6 +228,7 @@ export async function setBoardCards(tenantId: string, cards: DeliveryCard[]) {
        VALUES ($1,$2,$3::jsonb,$4)`,
       [tenantId, card.id, JSON.stringify(card), new Date().toISOString()],
     );
+    await syncScenarioRecordsForCard(tenantId, card.id, card.scenarios || []);
   }
   return cloneCards(cards);
 }
@@ -215,6 +236,7 @@ export async function setBoardCards(tenantId: string, cards: DeliveryCard[]) {
 export async function deleteBoardCard(tenantId: string, cardId: string) {
   const cards: DeliveryCard[] = await getBoardCards(tenantId);
   const next = cards.filter((card: DeliveryCard) => card.id !== cardId);
+  await deleteAllScenarioRecordsForCard(tenantId, cardId);
   await setBoardCards(tenantId, next);
   return next;
 }
@@ -231,6 +253,7 @@ export async function upsertBoardCard(tenantId: string, card: DeliveryCard) {
   }
 
   const next = await setBoardCards(tenantId, cards);
+  await deleteRemovedScenarios(tenantId, beforeCard?.scenarios || [], card.scenarios || []);
   await recordCardHistory(tenantId, card.id, index >= 0 ? 'update' : 'create', beforeCard, card as DeliveryCard);
   return next;
 }

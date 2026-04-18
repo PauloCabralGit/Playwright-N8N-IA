@@ -776,29 +776,121 @@ export default function Page() {
     }
   };
 
-  const generateAiWithN8n = async (card: DeliveryCard, scenario: Scenario) => {
+  const buildAiScenarioDrafts = (card: DeliveryCard): Scenario[] => {
+    const normalizedCriteria = card.acceptanceCriteria
+      .map((criterion) => criterion.trim())
+      .filter(Boolean);
+
+    const category = /perf|latenc|tempo|volume|carga/i.test(`${card.title} ${card.module} ${normalizedCriteria.join(' ')}`)
+      ? 'Performance'
+      : 'Funcional';
+
+    const drafts: Scenario[] = [
+      {
+        id: `CT-AI-${Math.floor(Math.random() * 900 + 100)}`,
+        title: `Happy path for ${card.title}`,
+        source: 'IA',
+        status: 'Draft',
+        objective: card.businessGoal,
+        owner: card.owner,
+        category,
+        execution: createDefaultExecution(12),
+      },
+    ];
+
+    if (normalizedCriteria.length > 1) {
+      drafts.push({
+        id: `CT-AI-${Math.floor(Math.random() * 900 + 100)}`,
+        title: `Business rules coverage for ${card.title}`,
+        source: 'IA',
+        status: 'Draft',
+        objective: 'Cobrir regras, combinações e restrições descritas nos critérios de aceite.',
+        owner: card.owner,
+        category,
+        execution: createDefaultExecution(12),
+      });
+    }
+
+    if (normalizedCriteria.some((criterion) => /nao|não|inexist|inv[aá]lid|erro|falha|vazio|sem /i.test(criterion))) {
+      drafts.push({
+        id: `CT-AI-${Math.floor(Math.random() * 900 + 100)}`,
+        title: `Negative path and validation for ${card.title}`,
+        source: 'IA',
+        status: 'Draft',
+        objective: 'Cobrir cenários inválidos, mensagens de erro e comportamento de exceção.',
+        owner: card.owner,
+        category,
+        execution: createDefaultExecution(10),
+      });
+    }
+
+    if (normalizedCriteria.some((criterion) => /perfil|permiss|autentic|sess[aã]o|papel|acesso/i.test(criterion))) {
+      drafts.push({
+        id: `CT-AI-${Math.floor(Math.random() * 900 + 100)}`,
+        title: `Permission and access control for ${card.title}`,
+        source: 'IA',
+        status: 'Draft',
+        objective: 'Validar restrições de acesso, autenticação e perfis envolvidos no fluxo.',
+        owner: card.owner,
+        category,
+        execution: createDefaultExecution(10),
+      });
+    }
+
+    if (category === 'Performance') {
+      drafts.push({
+        id: `CT-AI-${Math.floor(Math.random() * 900 + 100)}`,
+        title: `Performance and response time for ${card.title}`,
+        source: 'IA',
+        status: 'Draft',
+        objective: 'Avaliar estabilidade, volume e tempo de resposta do fluxo.',
+        owner: card.owner,
+        category,
+        execution: createDefaultExecution(15),
+      });
+    }
+
+    return drafts;
+  };
+
+  const generateAiWithN8n = async (card: DeliveryCard, scenarios: Scenario[]) => {
     if (hasUnsavedN8nSettings || !isN8nIntegrationReady(n8nDraftSettings) || !n8nConnectionVerified) return;
 
     try {
       setSyncStatus('pending');
-      setSyncMessage('Gerando cenário por IA...');
+      setSyncMessage(`Gerando ${scenarios.length} cenários por IA...`);
+      const primaryScenario = scenarios[0];
       const response = await fetch('/api/scenarios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: scenario.id,
-          title: scenario.title,
+          id: primaryScenario.id,
+          title: primaryScenario.title,
           module: card.module,
           category: /perf/i.test(`${card.id} ${card.module} ${card.title}`) ? 'Performance' : 'Funcional',
           priority: card.priority,
-          status: scenario.status || 'Draft',
+          status: primaryScenario.status || 'Draft',
           objective: card.businessGoal,
           preconditions: card.qaNotes,
-          steps: card.acceptanceCriteria.join('\n'),
-          expectedResult: card.acceptanceCriteria.join('\n'),
           owner: card.owner,
           cardId: card.id,
           card,
+          scenarioBatch: scenarios.map((scenario) => ({
+            id: scenario.id,
+            title: scenario.title,
+            module: card.module,
+            category: scenario.category || 'Funcional',
+            priority: card.priority,
+            status: scenario.status || 'Draft',
+            objective: scenario.objective || card.businessGoal,
+            owner: scenario.owner || card.owner,
+          })),
+          scenarioCountHint: scenarios.length,
+          generationMode: 'multi_scenario_from_acceptance_criteria',
+          generationInstructions:
+            'Leia os critérios de aceite, interprete a intenção da task e gere vários cenários complementares. ' +
+            'Não copie os critérios literalmente. Crie cenários distintos cobrindo happy path, regras de negócio, ' +
+            'validações, exceções e casos negativos quando fizer sentido.',
           acceptanceCriteria: card.acceptanceCriteria,
           businessGoal: card.businessGoal,
           qaNotes: card.qaNotes,
@@ -819,7 +911,7 @@ export default function Page() {
       }
 
       setSyncStatus('success');
-      setSyncMessage('Cenário enviado para geração IA com sucesso.');
+      setSyncMessage(`${scenarios.length} cenários enviados para geração IA com sucesso.`);
       clearSyncMessage();
     } catch (error) {
       setSyncStatus('error');
@@ -975,26 +1067,16 @@ export default function Page() {
       return;
     }
 
-    const aiScenario: Scenario = {
-      id: `CT-AI-${Math.floor(Math.random() * 900 + 100)}`,
-      title: `AI scenario draft for ${selectedCard.title}`,
-      source: 'IA' as const,
-      status: 'Ready' as const,
-      objective: selectedCard.businessGoal,
-      steps: selectedCard.acceptanceCriteria.join('\n'),
-      expectedResult: selectedCard.acceptanceCriteria.join('\n'),
-      owner: selectedCard.owner,
-      execution: createDefaultExecution(12),
-    };
+    const aiScenarios = buildAiScenarioDrafts(selectedCard);
 
     const updatedCard = {
       ...selectedCard,
-      scenarios: [aiScenario, ...selectedCard.scenarios],
+      scenarios: [...aiScenarios, ...selectedCard.scenarios],
     };
 
     void persistBoardCard(updatedCard, 'local');
 
-    generateAiWithN8n(updatedCard, aiScenario);
+    generateAiWithN8n(updatedCard, aiScenarios);
   };
 
   const moveCard = async (cardId: string, newColumn: ColumnId) => {

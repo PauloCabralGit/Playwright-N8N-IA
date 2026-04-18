@@ -204,6 +204,10 @@ export async function POST(request: NextRequest) {
       configSnapshot?: {
         webhookUrl?: string;
       };
+      scenarioBatch?: ScenarioDTO[];
+      scenarioCountHint?: number;
+      generationMode?: string;
+      generationInstructions?: string;
       cardId?: string;
       card?: DeliveryCard;
       acceptanceCriteria?: string[];
@@ -212,8 +216,9 @@ export async function POST(request: NextRequest) {
     };
 
     stage = 'request:validate';
-    if (!body.id || !body.title) {
-      return json({ error: 'id and title are required', stage }, 400);
+    const hasScenarioBatch = Array.isArray(body.scenarioBatch) && body.scenarioBatch.length > 0;
+    if ((!body.id || !body.title) && !hasScenarioBatch) {
+      return json({ error: 'id and title are required when scenarioBatch is absent', stage }, 400);
     }
 
     stage = 'scenario:normalize';
@@ -225,11 +230,21 @@ export async function POST(request: NextRequest) {
       module: body.module || 'Geral',
       tags: body.tags || [],
     };
+    const scenarioBatch = hasScenarioBatch
+      ? body.scenarioBatch!.map((item) => ({
+          ...item,
+          status: item.status || 'Backlog',
+          priority: item.priority || body.priority || 'MÃ©dia',
+          category: item.category || body.category || 'Funcional',
+          module: item.module || body.module || 'Geral',
+          tags: item.tags || [],
+        }))
+      : [scenario];
 
     stage = 'tenant:resolve';
     const tenant = await getCurrentTenant(request);
 
-    if (body.cardId && tenant) {
+    if (body.cardId && tenant && !body.card) {
       stage = 'board:add-scenario';
       await addScenarioToBoardCard(tenant.id, body.cardId, {
         id: scenario.id,
@@ -241,6 +256,7 @@ export async function POST(request: NextRequest) {
 
     const result: Record<string, unknown> = {
       scenario,
+      scenarios: scenarioBatch,
     };
 
     if (body.syncToGitHub) {
@@ -266,6 +282,10 @@ export async function POST(request: NextRequest) {
         action: 'task_ia',
         command: 'task_ia',
         scenario,
+        scenarioBatch,
+        scenarioCountHint: body.scenarioCountHint || scenarioBatch.length,
+        generationMode: body.generationMode || 'multi_scenario_from_acceptance_criteria',
+        generationInstructions: body.generationInstructions || '',
         card: body.card || null,
         acceptanceCriteria: Array.isArray(body.acceptanceCriteria) ? body.acceptanceCriteria : [],
         businessGoal: body.businessGoal || scenario.objective || '',
