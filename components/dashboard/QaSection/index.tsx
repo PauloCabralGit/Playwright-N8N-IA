@@ -58,7 +58,7 @@ export function QaSection({
   return (
     <Card
       id="qa"
-      className="rounded-[32px] border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.12),transparent_24%),radial-gradient(circle_at_top_left,rgba(217,70,239,0.12),transparent_20%),linear-gradient(180deg,#0d1320_0%,#09101b_100%)] p-6 shadow-[0_30px_90px_-35px_rgba(8,15,30,0.95)]"
+      className="flex max-h-[calc(88vh-7rem)] flex-col overflow-hidden rounded-[32px] border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.12),transparent_24%),radial-gradient(circle_at_top_left,rgba(217,70,239,0.12),transparent_20%),linear-gradient(180deg,#0d1320_0%,#09101b_100%)] p-6 shadow-[0_30px_90px_-35px_rgba(8,15,30,0.95)]"
     >
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -114,7 +114,7 @@ export function QaSection({
         </div>
       </div>
 
-      <Tabs defaultValue="card" className="mt-6">
+      <Tabs defaultValue="card" className="mt-6 flex min-h-0 flex-1 flex-col">
         <TabsList className="grid w-full grid-cols-3 rounded-2xl border border-white/10 bg-slate-950/80 p-1">
           <TabsTrigger value="card" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-slate-950">
             Card
@@ -127,7 +127,7 @@ export function QaSection({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="card" className="mt-5 space-y-4">
+        <TabsContent value="card" className="mt-5 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
           <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
             <div className={sectionSurface('p-5')}>
               <div className="grid gap-4 md:grid-cols-2">
@@ -221,7 +221,7 @@ export function QaSection({
           </div>
         </TabsContent>
 
-        <TabsContent value="scenarios" className="mt-5 space-y-4">
+        <TabsContent value="scenarios" className="mt-5 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-sm font-semibold text-slate-100">Cenários vinculados</div>
@@ -314,7 +314,7 @@ export function QaSection({
           </div>
         </TabsContent>
 
-        <TabsContent value="execution" className="mt-5 space-y-4">
+        <TabsContent value="execution" className="mt-5 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
           {selectedCard.scenarios.length === 0 ? (
             <div className="rounded-[26px] border border-dashed border-slate-700 bg-slate-950/40 px-5 py-6 text-sm text-slate-400">
               Nenhum cenário disponível para execução ainda.
