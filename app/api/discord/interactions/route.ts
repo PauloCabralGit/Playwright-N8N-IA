@@ -10,6 +10,15 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+function isValidUrl(value: string) {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function safeParseJson(rawBody: string) {
   try {
     return JSON.parse(rawBody) as Record<string, unknown>;
@@ -20,7 +29,7 @@ function safeParseJson(rawBody: string) {
 
 function pickDiscordContent(payload: Record<string, unknown> | null, status: number) {
   if (!payload) {
-    return status >= 400 ? `Falha ao processar a interação (${status}).` : 'Processado com sucesso.';
+    return status >= 400 ? `Falha ao processar a interacao (${status}).` : 'Processado com sucesso.';
   }
 
   const contentFromContent = typeof payload.content === 'string' ? payload.content.trim() : '';
@@ -33,10 +42,54 @@ function pickDiscordContent(payload: Record<string, unknown> | null, status: num
   }
 
   if (payload.ok === false) {
-    return `Falha ao processar a interação (${status}).`;
+    return `Falha ao processar a interacao (${status}).`;
   }
 
   return 'Processado com sucesso.';
+}
+
+function resolveDiscordWebhookCandidates(config: Awaited<ReturnType<typeof getN8nConfig>>) {
+  const candidates = [
+    String(config.discordWebhook || '').trim(),
+    buildDiscordWebhookUrl(config.webhookBaseUrl || config.webhookUrl),
+    String(config.webhookUrl || '').trim(),
+  ];
+
+  return candidates.filter((candidate, index, all) => {
+    if (!candidate || !isValidUrl(candidate)) {
+      return false;
+    }
+
+    return all.indexOf(candidate) === index;
+  });
+}
+
+async function callDiscordWebhook(candidates: string[], payload: Record<string, unknown>) {
+  let lastError = 'Nenhum webhook configurado.';
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetch(candidate, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        cache: 'no-store',
+      });
+
+      const responsePayload = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+      if (response.ok) {
+        return { response, responsePayload };
+      }
+
+      lastError = `Webhook ${candidate} respondeu com ${response.status}.`;
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : 'Erro desconhecido ao chamar o n8n.';
+    }
+  }
+
+  throw new Error(lastError);
 }
 
 async function sendDiscordFollowup(applicationId: string, interactionToken: string, content: string) {
@@ -61,27 +114,21 @@ export async function POST(request: NextRequest) {
   const body = safeParseJson(rawBody);
 
   if (!body) {
-    return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 });
+    return NextResponse.json({ error: 'Payload invalido.' }, { status: 400 });
   }
 
   const application = body.application as Record<string, unknown> | undefined;
   const member = body.member as Record<string, unknown> | undefined;
   const user = body.user as Record<string, unknown> | undefined;
 
-  const applicationId = String(
-    body.application_id ||
-      application?.id ||
-      application?.application_id ||
-      ''
-  ).trim();
-
+  const applicationId = String(body.application_id || application?.id || application?.application_id || '').trim();
   if (!applicationId) {
     return NextResponse.json({ error: 'Discord application id ausente.' }, { status: 400 });
   }
 
   const tenant = await getTenantByDiscordApplicationIdPublic(applicationId);
   if (!tenant) {
-    return NextResponse.json({ error: 'Tenant do Discord não encontrado.' }, { status: 404 });
+    return NextResponse.json({ error: 'Tenant do Discord nao encontrado.' }, { status: 404 });
   }
 
   let publicKey = String(tenant.discordPublicKey || '').trim();
@@ -102,7 +149,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (!verified) {
-    return NextResponse.json({ error: 'Assinatura do Discord inválida.' }, { status: 401 });
+    return NextResponse.json({ error: 'Assinatura do Discord invalida.' }, { status: 401 });
   }
 
   const interactionType = Number(body.type || 0);
@@ -115,12 +162,12 @@ export async function POST(request: NextRequest) {
   const normalized = normalizeDiscordInteractionPayload(body);
   const normalizedUser = String((normalized as Record<string, unknown>).user || '').trim();
   const config = await getN8nConfig(request, tenant.id);
-  const discordWebhookUrl = buildDiscordWebhookUrl(config.webhookBaseUrl || config.webhookUrl);
+  const discordWebhookCandidates = resolveDiscordWebhookCandidates(config);
 
-  if (!discordWebhookUrl) {
+  if (discordWebhookCandidates.length === 0) {
     return NextResponse.json(
-      { error: 'Webhook do Discord não configurado para o tenant.' },
-      { status: 400 }
+      { error: 'Webhook do Discord nao configurado para o tenant.' },
+      { status: 400 },
     );
   }
 
@@ -146,22 +193,12 @@ export async function POST(request: NextRequest) {
     };
 
     try {
-      const response = await fetch(discordWebhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payloadToN8n),
-        cache: 'no-store',
-      });
-
-      const responsePayload = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+      const { response, responsePayload } = await callDiscordWebhook(discordWebhookCandidates, payloadToN8n);
       const content = pickDiscordContent(responsePayload, response.status);
-
       await sendDiscordFollowup(applicationId, interactionToken, content);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro desconhecido ao chamar o n8n.';
-      await sendDiscordFollowup(applicationId, interactionToken, `Erro ao processar interação: ${message}`);
+      await sendDiscordFollowup(applicationId, interactionToken, `Erro ao processar interacao: ${message}`);
     }
   });
 
