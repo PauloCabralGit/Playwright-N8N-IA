@@ -115,22 +115,22 @@ export function QaSection({
       </div>
 
       <Tabs defaultValue="card" className="mt-7 flex min-h-0 flex-1 flex-col">
-        <TabsList className="grid w-full grid-cols-3 rounded-2xl border border-white/10 bg-slate-950/80 p-1">
+        <TabsList className="grid w-full grid-cols-3 gap-2 rounded-[24px] border border-white/10 bg-slate-950/90 p-2">
           <TabsTrigger
             value="card"
-            className="rounded-xl px-4 py-3 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white data-[state=active]:bg-white data-[state=active]:text-slate-950"
+            className="min-h-12 rounded-2xl border border-transparent px-4 py-3 font-sans text-sm font-semibold tracking-[0.02em] text-slate-200 transition-all hover:border-white/10 hover:bg-white/5 hover:text-white data-[state=active]:border-cyan-300/30 data-[state=active]:bg-cyan-400/12 data-[state=active]:text-white data-[state=active]:shadow-[0_12px_30px_-18px_rgba(34,211,238,0.75)]"
           >
             Card
           </TabsTrigger>
           <TabsTrigger
             value="scenarios"
-            className="rounded-xl px-4 py-3 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white data-[state=active]:bg-white data-[state=active]:text-slate-950"
+            className="min-h-12 rounded-2xl border border-transparent px-4 py-3 font-sans text-sm font-semibold tracking-[0.02em] text-slate-200 transition-all hover:border-white/10 hover:bg-white/5 hover:text-white data-[state=active]:border-fuchsia-300/30 data-[state=active]:bg-fuchsia-400/12 data-[state=active]:text-white data-[state=active]:shadow-[0_12px_30px_-18px_rgba(217,70,239,0.7)]"
           >
             Cenários
           </TabsTrigger>
           <TabsTrigger
             value="execution"
-            className="rounded-xl px-4 py-3 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white data-[state=active]:bg-white data-[state=active]:text-slate-950"
+            className="min-h-12 rounded-2xl border border-transparent px-4 py-3 font-sans text-sm font-semibold tracking-[0.02em] text-slate-200 transition-all hover:border-white/10 hover:bg-white/5 hover:text-white data-[state=active]:border-emerald-300/30 data-[state=active]:bg-emerald-400/12 data-[state=active]:text-white data-[state=active]:shadow-[0_12px_30px_-18px_rgba(52,211,153,0.7)]"
           >
             Execução
           </TabsTrigger>
@@ -346,7 +346,7 @@ export function QaSection({
                 <div key={`${scenario.id}-execution`} className={`rounded-[26px] border p-5 shadow-[0_20px_55px_-35px_rgba(8,15,30,0.95)] ${renderStatusTone(execution.status)}`}>
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                      <div className="text-sm font-semibold">{scenario.title}</div>
+                      <div className="text-base font-semibold">{scenario.title}</div>
                       <div className="mt-1 text-xs opacity-80">
                         {execution.status === 'Failed' ? 'Reprovado' : execution.status === 'Passed' ? 'Aprovado' : 'Não executado'}
                       </div>
@@ -389,7 +389,7 @@ export function QaSection({
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <div className="mt-4 grid gap-3 xl:grid-cols-4 md:grid-cols-2">
                     <Input
                       type="number"
                       min={0}
@@ -462,6 +462,9 @@ export function QaSection({
                         <SelectItem value="IA">Bug por IA</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="mt-3 grid gap-3 xl:grid-cols-[1.05fr_1.05fr_0.9fr] lg:grid-cols-2">
                     <Textarea
                       value={execution.notes}
                       onChange={(event) =>
@@ -473,7 +476,7 @@ export function QaSection({
                         })
                       }
                       placeholder="Notas da execução"
-                      className={`md:col-span-2 min-h-[110px] ${fieldClassName('textarea')}`}
+                      className={`min-h-[96px] ${fieldClassName('textarea')}`}
                     />
                     <Textarea
                       value={execution.evidences.join('\n')}
@@ -489,7 +492,7 @@ export function QaSection({
                         })
                       }
                       placeholder="Cole links ou descrições das evidências, uma por linha"
-                      className={`min-h-[110px] ${fieldClassName('textarea')}`}
+                      className={`min-h-[96px] ${fieldClassName('textarea')}`}
                     />
                     <div className="space-y-3">
                       <Input
