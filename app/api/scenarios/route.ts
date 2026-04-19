@@ -24,6 +24,13 @@ export interface ScenarioDTO {
   owner?: string;
 }
 
+type ParsedGeneratedScenario = {
+  title: string;
+  objective: string;
+  steps: string;
+  expectedResult: string;
+};
+
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -41,6 +48,156 @@ function isValidUrl(value: unknown): value is string {
   } catch {
     return false;
   }
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getGitHubFeaturePath(scenario: ScenarioDTO) {
+  const dir = scenario.category === 'Performance' ? 'features/performance' : 'features/funcionais';
+  return `${dir}/${scenario.id.toLowerCase()}.feature`;
+}
+
+function decodeGitHubContent(content: string, encoding: string) {
+  if (encoding === 'base64') {
+    return Buffer.from(content, 'base64').toString('utf8');
+  }
+
+  return content;
+}
+
+function parseGherkinScenarios(text: string): ParsedGeneratedScenario[] {
+  const lines = text.split(/\r?\n/);
+  const featureTitle =
+    lines.find((line) => line.trim().startsWith('Feature:'))?.replace(/^.*Feature:\s*/, '').trim() || '';
+
+  const scenarios: ParsedGeneratedScenario[] = [];
+  let currentTitle = '';
+  let currentGiven: string[] = [];
+  let currentWhen: string[] = [];
+  let currentThen: string[] = [];
+  let currentSection: 'given' | 'when' | 'then' | null = null;
+
+  const flush = () => {
+    if (!currentTitle) return;
+    scenarios.push({
+      title: currentTitle,
+      objective: featureTitle ? `Cobrir o comportamento descrito em ${featureTitle}.` : '',
+      steps: [...currentGiven, ...currentWhen].join('\n').trim(),
+      expectedResult: currentThen.join('\n').trim(),
+    });
+    currentTitle = '';
+    currentGiven = [];
+    currentWhen = [];
+    currentThen = [];
+    currentSection = null;
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    if (/^Scenario(?: Outline)?:/i.test(line)) {
+      flush();
+      currentTitle = line.replace(/^Scenario(?: Outline)?:\s*/i, '').trim();
+      continue;
+    }
+
+    if (/^Given\b/i.test(line)) {
+      currentSection = 'given';
+      currentGiven.push(line);
+      continue;
+    }
+
+    if (/^When\b/i.test(line)) {
+      currentSection = 'when';
+      currentWhen.push(line);
+      continue;
+    }
+
+    if (/^Then\b/i.test(line)) {
+      currentSection = 'then';
+      currentThen.push(line);
+      continue;
+    }
+
+    if (/^And\b/i.test(line)) {
+      if (currentSection === 'then') currentThen.push(line);
+      else if (currentSection === 'when') currentWhen.push(line);
+      else currentGiven.push(line);
+      continue;
+    }
+
+    if (/^\|.*\|$/.test(line)) {
+      if (currentSection === 'then') currentThen.push(line);
+      else if (currentSection === 'when') currentWhen.push(line);
+      else currentGiven.push(line);
+    }
+  }
+
+  flush();
+  return scenarios;
+}
+
+async function fetchGeneratedScenariosFromGitHub(
+  request: NextRequest,
+  tenantId: string | undefined,
+  scenarioBatch: ScenarioDTO[],
+) {
+  const config = await getN8nConfig(request, tenantId);
+  const owner = String(config.githubOwner || '').trim();
+  const repo = String(config.githubRepo || '').trim();
+  const token = String(config.githubToken || '').trim();
+  const branch = String(config.githubBranch || 'main').trim() || 'main';
+
+  if (!owner || !repo || !token || scenarioBatch.length === 0) {
+    return [];
+  }
+
+  const paths = scenarioBatch
+    .map((scenario) => getGitHubFeaturePath(scenario))
+    .filter((path, index, all) => all.indexOf(path) === index);
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const parsedCollections: ParsedGeneratedScenario[] = [];
+
+    for (const path of paths) {
+      const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${encodeURIComponent(branch)}`,
+        {
+          headers: {
+            Accept: 'application/vnd.github+json',
+            Authorization: `Bearer ${token}`,
+            'X-GitHub-Api-Version': '2022-11-28',
+            'User-Agent': GITHUB_USER_AGENT,
+          },
+          cache: 'no-store',
+        },
+      );
+
+      if (!response.ok) {
+        continue;
+      }
+
+      const payload = (await response.json().catch(() => ({}))) as { content?: string; encoding?: string };
+      const content = String(payload.content || '').replace(/\n/g, '');
+      if (!content) {
+        continue;
+      }
+
+      const decoded = decodeGitHubContent(content, String(payload.encoding || ''));
+      parsedCollections.push(...parseGherkinScenarios(decoded));
+    }
+
+    if (parsedCollections.length > 0) {
+      return parsedCollections;
+    }
+
+    await sleep(1500);
+  }
+
+  return [];
 }
 
 async function callN8n(webhookUrl: string, body: Record<string, unknown>) {
@@ -298,6 +455,9 @@ export async function POST(request: NextRequest) {
         discordWebhook,
         source: 'site',
       });
+
+      stage = 'github:read-generated-scenarios';
+      result.generatedScenarios = await fetchGeneratedScenariosFromGitHub(request, tenant?.id, scenarioBatch);
     }
 
     return json(result, 201);

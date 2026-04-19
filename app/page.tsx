@@ -1042,8 +1042,21 @@ export default function Page() {
       }
 
       const payload = await response.json().catch(() => ({}));
+      const structuredGeneratedScenarios = Array.isArray(payload?.generatedScenarios)
+        ? payload.generatedScenarios
+            .map((scenario: Record<string, unknown>) => ({
+              title: String(scenario?.title || '').trim(),
+              objective: String(scenario?.objective || '').trim(),
+              steps: String(scenario?.steps || '').trim(),
+              expectedResult: String(scenario?.expectedResult || '').trim(),
+            }))
+            .filter((scenario: ParsedGherkinScenario) => scenario.title || scenario.steps || scenario.expectedResult)
+        : [];
       const generatedTexts = collectGherkinTexts(payload?.n8n || payload);
-      const parsedGeneratedScenarios = generatedTexts.flatMap((text) => parseGherkinScenarios(text));
+      const parsedGeneratedScenarios =
+        structuredGeneratedScenarios.length > 0
+          ? structuredGeneratedScenarios
+          : generatedTexts.flatMap((text) => parseGherkinScenarios(text));
 
       if (parsedGeneratedScenarios.length > 0) {
         const existingScenarioIds = new Set(card.scenarios.map((scenario) => scenario.id));
@@ -1063,7 +1076,7 @@ export default function Page() {
           };
         });
 
-        const overflowScenarios = parsedGeneratedScenarios.slice(updatedScenarios.length).map((generated, index) => ({
+        const overflowScenarios = parsedGeneratedScenarios.slice(updatedScenarios.length).map((generated: ParsedGherkinScenario, index: number) => ({
           id: `CT-AI-${Math.floor(Math.random() * 900 + 100)}-${index + 1}`,
           title: generated.title || `AI scenario ${index + 1} for ${card.title}`,
           source: 'IA' as const,
@@ -1074,7 +1087,7 @@ export default function Page() {
           category: /perf/i.test(`${card.id} ${card.module} ${card.title}`) ? 'Performance' as const : 'Funcional' as const,
           owner: card.owner,
           execution: createDefaultExecution(10),
-        })).filter((scenario) => !existingScenarioIds.has(scenario.id));
+        })).filter((scenario: Scenario) => !existingScenarioIds.has(scenario.id));
 
         const updatedCard = {
           ...card,
