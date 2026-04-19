@@ -194,6 +194,110 @@ function ScenarioBadge({ source }: { source: Scenario['source'] }) {
   );
 }
 
+type ParsedGherkinScenario = {
+  title: string;
+  objective: string;
+  steps: string;
+  expectedResult: string;
+};
+
+function collectGherkinTexts(value: unknown, bucket: string[] = []) {
+  if (typeof value === 'string') {
+    if (/^\s*Feature:/m.test(value) || /^\s*Scenario(?: Outline)?:/m.test(value)) {
+      bucket.push(value);
+    }
+    return bucket;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectGherkinTexts(item, bucket);
+    }
+    return bucket;
+  }
+
+  if (value && typeof value === 'object') {
+    for (const item of Object.values(value as Record<string, unknown>)) {
+      collectGherkinTexts(item, bucket);
+    }
+  }
+
+  return bucket;
+}
+
+function parseGherkinScenarios(text: string): ParsedGherkinScenario[] {
+  const lines = text.split(/\r?\n/);
+  const featureTitle =
+    lines.find((line) => line.trim().startsWith('Feature:'))?.replace(/^.*Feature:\s*/, '').trim() || '';
+
+  const scenarios: ParsedGherkinScenario[] = [];
+  let currentTitle = '';
+  let currentGiven: string[] = [];
+  let currentWhen: string[] = [];
+  let currentThen: string[] = [];
+  let currentSection: 'given' | 'when' | 'then' | null = null;
+
+  const flushScenario = () => {
+    if (!currentTitle) return;
+    scenarios.push({
+      title: currentTitle,
+      objective: featureTitle ? `Cobrir o comportamento descrito em ${featureTitle}.` : '',
+      steps: [...currentGiven, ...currentWhen].join('\n').trim(),
+      expectedResult: currentThen.join('\n').trim(),
+    });
+    currentTitle = '';
+    currentGiven = [];
+    currentWhen = [];
+    currentThen = [];
+    currentSection = null;
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    if (/^Scenario(?: Outline)?:/i.test(line)) {
+      flushScenario();
+      currentTitle = line.replace(/^Scenario(?: Outline)?:\s*/i, '').trim();
+      continue;
+    }
+
+    if (/^(Given|And)\b/i.test(line) && currentSection !== 'then' && currentSection !== 'when') {
+      currentSection = 'given';
+      currentGiven.push(line);
+      continue;
+    }
+
+    if (/^When\b/i.test(line)) {
+      currentSection = 'when';
+      currentWhen.push(line);
+      continue;
+    }
+
+    if (/^Then\b/i.test(line)) {
+      currentSection = 'then';
+      currentThen.push(line);
+      continue;
+    }
+
+    if (/^And\b/i.test(line)) {
+      if (currentSection === 'then') currentThen.push(line);
+      else if (currentSection === 'when') currentWhen.push(line);
+      else if (currentSection === 'given') currentGiven.push(line);
+      continue;
+    }
+
+    if (/^\|.*\|$/.test(line)) {
+      if (currentSection === 'then') currentThen.push(line);
+      else if (currentSection === 'when') currentWhen.push(line);
+      else if (currentSection === 'given') currentGiven.push(line);
+    }
+  }
+
+  flushScenario();
+  return scenarios;
+}
+
 export default function Page() {
   const router = useRouter();
   const [cards, setCards] = useState<DeliveryCard[]>(initialCards);
@@ -937,8 +1041,55 @@ export default function Page() {
         return;
       }
 
+      const payload = await response.json().catch(() => ({}));
+      const generatedTexts = collectGherkinTexts(payload?.n8n || payload);
+      const parsedGeneratedScenarios = generatedTexts.flatMap((text) => parseGherkinScenarios(text));
+
+      if (parsedGeneratedScenarios.length > 0) {
+        const existingScenarioIds = new Set(card.scenarios.map((scenario) => scenario.id));
+        const updatedScenarios = card.scenarios.map((scenario, index) => {
+          const generated = parsedGeneratedScenarios[index];
+          if (!generated) {
+            return scenario;
+          }
+
+          return {
+            ...scenario,
+            title: generated.title || scenario.title,
+            objective: generated.objective || scenario.objective || card.businessGoal,
+            steps: generated.steps || scenario.steps || '',
+            expectedResult: generated.expectedResult || scenario.expectedResult || '',
+            status: 'Ready' as const,
+          };
+        });
+
+        const overflowScenarios = parsedGeneratedScenarios.slice(updatedScenarios.length).map((generated, index) => ({
+          id: `CT-AI-${Math.floor(Math.random() * 900 + 100)}-${index + 1}`,
+          title: generated.title || `AI scenario ${index + 1} for ${card.title}`,
+          source: 'IA' as const,
+          status: 'Ready' as const,
+          objective: generated.objective || card.businessGoal,
+          steps: generated.steps || '',
+          expectedResult: generated.expectedResult || '',
+          category: /perf/i.test(`${card.id} ${card.module} ${card.title}`) ? 'Performance' as const : 'Funcional' as const,
+          owner: card.owner,
+          execution: createDefaultExecution(10),
+        })).filter((scenario) => !existingScenarioIds.has(scenario.id));
+
+        const updatedCard = {
+          ...card,
+          scenarios: [...overflowScenarios, ...updatedScenarios],
+        };
+
+        await persistBoardCard(updatedCard, 'update');
+      }
+
       setSyncStatus('success');
-      setSyncMessage(`${scenarios.length} cenários enviados para geração IA com sucesso.`);
+      setSyncMessage(
+        parsedGeneratedScenarios.length > 0
+          ? `${parsedGeneratedScenarios.length} cenários gerados e preenchidos no sistema.`
+          : `${scenarios.length} cenários enviados para geração IA com sucesso.`,
+      );
       clearSyncMessage();
     } catch (error) {
       setSyncStatus('error');
