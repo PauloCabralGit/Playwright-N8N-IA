@@ -111,7 +111,7 @@ const initialCards: DeliveryCard[] = [
   },
 ];
 
-const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+const SESSION_IDLE_TIMEOUT_MS = 30 * 1000;
 
 type AuthAccount = {
   id: string;

@@ -6,7 +6,7 @@ import workflowTemplate from '@/updated_flow.json';
 
 export const SESSION_COOKIE_NAME = 'qa_session';
 const PASSWORD_PBKDF2_ITERATIONS = 100000;
-export const SESSION_IDLE_TIMEOUT_SECONDS = 60 * 30;
+export const SESSION_IDLE_TIMEOUT_SECONDS = 30;
 const SESSION_IDLE_TIMEOUT_MS = SESSION_IDLE_TIMEOUT_SECONDS * 1000;
 const SESSION_TOUCH_THROTTLE_MS = 60 * 1000;
 
