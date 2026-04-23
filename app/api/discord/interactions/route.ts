@@ -50,7 +50,6 @@ function pickDiscordContent(payload: Record<string, unknown> | null, status: num
 
 function resolveDiscordWebhookCandidates(config: Awaited<ReturnType<typeof getN8nConfig>>) {
   const candidates = [
-    String(config.discordWebhook || '').trim(),
     buildDiscordWebhookUrl(config.webhookBaseUrl || config.webhookUrl),
     String(config.webhookUrl || '').trim(),
   ];
