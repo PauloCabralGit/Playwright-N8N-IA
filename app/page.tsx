@@ -196,6 +196,14 @@ function ScenarioBadge({ source }: { source: Scenario['source'] }) {
   );
 }
 
+function formatSessionCountdown(timeLeftMs: number) {
+  const safeMs = Math.max(0, timeLeftMs);
+  const totalSeconds = Math.ceil(safeMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
 type ParsedGherkinScenario = {
   title: string;
   objective: string;
@@ -331,7 +339,9 @@ export default function Page() {
   const [currentTenant, setCurrentTenant] = useState<AuthTenant | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const idleLogoutTimerRef = useRef<number | null>(null);
+  const idleDeadlineRef = useRef<number | null>(null);
   const idleLogoutLockedRef = useRef(false);
+  const [sessionTimeLeftMs, setSessionTimeLeftMs] = useState(SESSION_IDLE_TIMEOUT_MS);
   const [settings, setSettings] = useState({
     autoSync: true,
     aiSuggestions: true,
@@ -817,6 +827,8 @@ export default function Page() {
         window.clearTimeout(idleLogoutTimerRef.current);
         idleLogoutTimerRef.current = null;
       }
+      idleDeadlineRef.current = null;
+      setSessionTimeLeftMs(SESSION_IDLE_TIMEOUT_MS);
       idleLogoutLockedRef.current = false;
       return;
     }
@@ -837,6 +849,8 @@ export default function Page() {
         window.clearTimeout(idleLogoutTimerRef.current);
       }
 
+      idleDeadlineRef.current = Date.now() + SESSION_IDLE_TIMEOUT_MS;
+      setSessionTimeLeftMs(SESSION_IDLE_TIMEOUT_MS);
       idleLogoutTimerRef.current = window.setTimeout(() => {
         void triggerIdleLogout();
       }, SESSION_IDLE_TIMEOUT_MS);
@@ -853,11 +867,23 @@ export default function Page() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     resetIdleTimer();
 
+    const intervalId = window.setInterval(() => {
+      const deadline = idleDeadlineRef.current;
+      if (!deadline) {
+        setSessionTimeLeftMs(SESSION_IDLE_TIMEOUT_MS);
+        return;
+      }
+
+      setSessionTimeLeftMs(Math.max(0, deadline - Date.now()));
+    }, 1000);
+
     return () => {
       if (idleLogoutTimerRef.current) {
         window.clearTimeout(idleLogoutTimerRef.current);
         idleLogoutTimerRef.current = null;
       }
+      idleDeadlineRef.current = null;
+      window.clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       events.forEach((eventName) => window.removeEventListener(eventName, resetIdleTimer));
     };
@@ -1404,6 +1430,12 @@ export default function Page() {
                     )}
                   >
                     {syncMessage}
+                  </div>
+                )}
+
+                {authState === 'authenticated' && (
+                  <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                    Sessao expira em <span className="font-mono font-semibold">{formatSessionCountdown(sessionTimeLeftMs)}</span> por inatividade.
                   </div>
                 )}
 
