@@ -124,9 +124,6 @@ export function SettingsSection({ settings, toggleSetting, n8nSettings, tenantDa
   const [n8nWarnings, setN8nWarnings] = useState<string[]>([]);
   const [bootstrapTenantId, setBootstrapTenantId] = useState('');
   const resolvedTenantId = tenantId || bootstrapTenantId || n8nForm.tenantId || '';
-  const discordInteractionEndpoint = n8nForm.appPublicUrl
-    ? `${n8nForm.appPublicUrl.replace(/\/+$/, '')}/api/discord/interactions`
-    : '';
   const hasLoadedN8nConfig = Boolean(
     n8nForm.webhookUrl ||
       n8nForm.apiKey ||
@@ -173,8 +170,8 @@ export function SettingsSection({ settings, toggleSetting, n8nSettings, tenantDa
     if (!appPublicUrl) errors.push('URL p?blica do app');
     else if (!isValidHttpUrl(appPublicUrl)) errors.push('URL p?blica do app com URL inv?lida');
 
-    if (!webhookBaseUrl) errors.push('Base URL do webhook');
-    else if (!isValidHttpUrl(webhookBaseUrl)) errors.push('Base URL do webhook com formato inv?lido');
+    if (!webhookBaseUrl) errors.push('URL do ambiente n8n');
+    else if (!isValidHttpUrl(webhookBaseUrl)) errors.push('URL do ambiente n8n com formato invalido');
 
     if (!apiKey) errors.push('API Key do n8n');
     else if (!isLikelyJwt(apiKey)) errors.push('API Key do n8n com formato inv?lido');
@@ -327,7 +324,7 @@ export function SettingsSection({ settings, toggleSetting, n8nSettings, tenantDa
     const errors = validateN8nForm(n8nForm);
 
     if (errors.length > 0) {
-      const message = `Corrija a configuraÃ§Ã£o antes de testar: ${errors.join(', ')}.`;
+      const message = `Corrija a configuracao antes de validar: ${errors.join(', ')}.`;
       setN8nTestStatus('error');
       setN8nTestMessage(message);
       onN8nConnectionTestResult?.(false, message);
@@ -335,7 +332,7 @@ export function SettingsSection({ settings, toggleSetting, n8nSettings, tenantDa
     }
 
     setN8nTestStatus('testing');
-    setN8nTestMessage('Testando conexÃ£o com o webhook...');
+    setN8nTestMessage('Testando a integracao...');
 
     try {
       const response = await fetch('/api/settings/n8n/test', {
@@ -348,19 +345,19 @@ export function SettingsSection({ settings, toggleSetting, n8nSettings, tenantDa
 
       if (!response.ok || !data?.ok) {
         const issues = Array.isArray(data?.issues) ? data.issues : [];
-        const message = data?.error || data?.details || 'NÃ£o foi possÃ­vel conectar ao webhook.';
+        const message = data?.error || data?.details || 'Nao foi possivel validar a integracao.';
         setN8nTestStatus('error');
         setN8nTestMessage(issues.length > 0 ? `${message} ${issues.join(', ')}.` : message);
         onN8nConnectionTestResult?.(false, message);
         return;
       }
 
-      const message = data?.message || 'ConexÃ£o com o webhook confirmada.';
+      const message = data?.message || 'Integracao validada com sucesso.';
       setN8nTestStatus('success');
       setN8nTestMessage(message);
       onN8nConnectionTestResult?.(true, message);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Erro desconhecido ao testar conexÃ£o.';
+      const message = error instanceof Error ? error.message : 'Erro desconhecido ao validar a integracao.';
       setN8nTestStatus('error');
       setN8nTestMessage(message);
       onN8nConnectionTestResult?.(false, message);
@@ -398,9 +395,9 @@ export function SettingsSection({ settings, toggleSetting, n8nSettings, tenantDa
       <Card className="rounded-[24px] border-white/10 bg-white/8 p-5 shadow-[0_30px_80px_-35px_rgba(15,23,42,0.9)]">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold text-white">Configuração do fluxo</h2>
+            <h2 className="text-lg font-bold text-white">Integracoes do cliente</h2>
             <p className="mt-1 text-xs text-slate-400">
-              Deixe apenas o que o workflow e a integração realmente usam.
+              Mostre so os dados que o cliente realmente precisa preencher para operar o Orion.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -430,35 +427,18 @@ export function SettingsSection({ settings, toggleSetting, n8nSettings, tenantDa
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-300">Base URL do webhook</label>
+            <label className="block text-xs font-medium text-slate-300">URL do ambiente n8n</label>
             <Input
               value={n8nForm.webhookBaseUrl || ''}
               onChange={(e) => updateN8nForm({ webhookBaseUrl: e.target.value })}
+              placeholder="https://seu-workspace.app.n8n.cloud"
               className={requiredFieldClass(n8nForm.webhookBaseUrl || '')}
             />
           </div>
-          <div className="md:col-span-2 rounded-2xl border border-white/10 bg-black/20 p-3 text-xs text-slate-300">
-            <div className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Webhook fixo</div>
-            <div className="mt-1 font-mono text-[11px] text-slate-200">
-              {n8nForm.webhookBaseUrl ? `${n8nForm.webhookBaseUrl.replace(/\/+$/, '')}/webhook/qa-platform/unified-sync` : 'Configure a base URL para gerar o webhook fixo.'}
-            </div>
-            <div className="mt-2 text-slate-400">
-              O bot do Discord chama este webhook do n8n. O workflow identifica a origem pelo payload e devolve a resposta pelo proprio webhook.
-            </div>
-          </div>
           <div className="md:col-span-2 rounded-2xl border border-cyan-400/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">
-            <div className="font-semibold">Endpoint de Interação do Discord</div>
-            <div className="mt-2 rounded-xl border border-cyan-400/20 bg-black/20 p-2 font-mono text-[11px] text-cyan-50">
-              {discordInteractionEndpoint || 'Preencha a URL pública do app para gerar o endpoint.'}
-            </div>
-            <p className="mt-2 text-cyan-100/80">
-              Use essa URL no Discord Developer Portal em Interactions Endpoint URL. É ela que recebe os slash commands e devolve a resposta da IA.
-            </p>
-          </div>
-          <div className="md:col-span-2 rounded-2xl border border-cyan-400/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">
-            <div className="font-semibold">Configuração do Discord Bot</div>
+            <div className="font-semibold">O que o cliente precisa informar</div>
             <p className="mt-1 text-cyan-100/80">
-              Preencha só o token do bot e, se quiser limitar aos comandos de um servidor, o Guild ID. O Application ID e a Public Key são resolvidos automaticamente.
+              Informe somente a URL do ambiente n8n, a chave da API, o token do bot do Discord e o repositorio do GitHub. O Orion cuida dos endpoints internos e das rotas tecnicas por baixo.
             </p>
           </div>
           <div>
@@ -481,7 +461,7 @@ export function SettingsSection({ settings, toggleSetting, n8nSettings, tenantDa
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-300">Comando do bot</label>
+            <label className="block text-xs font-medium text-slate-300">Comando do Discord</label>
             <Input
               value={n8nForm.discordCommandName}
               onChange={(e) => updateN8nForm({ discordCommandName: e.target.value })}
@@ -538,7 +518,7 @@ export function SettingsSection({ settings, toggleSetting, n8nSettings, tenantDa
             onClick={handleTestConnection}
             disabled={n8nTestStatus === 'testing'}
           >
-            {n8nTestStatus === 'testing' ? 'Testando...' : 'Testar conexão'}
+            {n8nTestStatus === 'testing' ? 'Testando...' : 'Validar integracao'}
           </Button>
         </div>
 

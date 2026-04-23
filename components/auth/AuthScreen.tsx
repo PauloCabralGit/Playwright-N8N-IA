@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { AlertCircle, ArrowRight, Bot, CheckCircle2, Lock, Sparkles, UserPlus } from 'lucide-react';
 
@@ -127,11 +127,6 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
     }
   };
 
-  const webhookPreview = useMemo(() => {
-    const base = signupForm.webhookBaseUrl.trim().replace(/\/+$/, '');
-    return base ? `${base}/webhook/qa-platform/unified-sync` : 'https://seu-n8n.com/webhook/qa-platform/unified-sync';
-  }, [signupForm.webhookBaseUrl]);
-
   const validateSignup = () => {
     const required: Array<[keyof FormState, string]> = [
       ['email', 'E-mail'],
@@ -140,7 +135,7 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
       ['cnpj', 'CNPJ'],
       ['address', 'Endereco'],
       ['appPublicUrl', 'URL publica do app'],
-      ['webhookBaseUrl', 'Base URL do webhook'],
+      ['webhookBaseUrl', 'URL do ambiente n8n'],
       ['apiKey', 'API Key do n8n'],
       ['discordBotToken', 'Discord Bot Token'],
       ['githubOwner', 'GitHub Owner'],
@@ -169,7 +164,7 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
     }
 
     if (signupForm.webhookBaseUrl && !isHttpUrl(signupForm.webhookBaseUrl)) {
-      nextIssues.push('Base URL do webhook esta invalida');
+      nextIssues.push('URL do ambiente n8n esta invalida');
     }
 
     if (signupForm.discordBotToken.trim().length < 10) {
@@ -429,15 +424,14 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
                     <Input value={signupForm.appPublicUrl} onChange={(e) => setSignupForm((prev) => ({ ...prev, appPublicUrl: e.target.value }))} type="url" className={fieldClassName()} placeholder="https://seu-app.ngrok-free.dev" />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="mb-1 block text-xs font-medium text-slate-300">Webhook base URL</label>
-                    <Input value={signupForm.webhookBaseUrl} onChange={(e) => setSignupForm((prev) => ({ ...prev, webhookBaseUrl: e.target.value }))} type="url" className={fieldClassName()} placeholder="https://pauloqa.app.n8n.cloud" />
+                    <label className="mb-1 block text-xs font-medium text-slate-300">URL do ambiente n8n</label>
+                    <Input value={signupForm.webhookBaseUrl} onChange={(e) => setSignupForm((prev) => ({ ...prev, webhookBaseUrl: e.target.value }))} type="url" className={fieldClassName()} placeholder="https://seu-workspace.app.n8n.cloud" />
                   </div>
                   <div className="md:col-span-2 rounded-2xl border border-cyan-400/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">
-                    <div className="font-semibold">Webhook padrao do Orion</div>
+                    <div className="font-semibold">Configuracao simplificada</div>
                     <p className="mt-1 text-cyan-100/80">
-                      O path do workflow permanece fixo. O tenant da empresa segue no payload para o n8n resolver a conta certa.
+                      Preencha apenas os dados da sua operacao. O Orion monta os endpoints internos e faz o roteamento tecnico automaticamente.
                     </p>
-                    <div className="mt-2 font-mono text-[11px] text-cyan-50">{webhookPreview}</div>
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-slate-300">API Key do n8n</label>
@@ -452,7 +446,7 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
                     <Input value={signupForm.discordGuildId} onChange={(e) => setSignupForm((prev) => ({ ...prev, discordGuildId: e.target.value }))} className={fieldClassName()} placeholder="Opcional" />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-300">Comando do bot</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-300">Comando do Discord</label>
                     <Input value={signupForm.discordCommandName} onChange={(e) => setSignupForm((prev) => ({ ...prev, discordCommandName: e.target.value }))} className={fieldClassName()} placeholder="qa" />
                   </div>
                   <div>
@@ -500,7 +494,7 @@ export function AuthScreen({ onAuthenticated, initialMode = 'login', showModeSwi
 
             <div className="mt-6 flex items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/65 px-4 py-3 text-xs text-slate-300">
               <Lock className="h-4 w-4 text-fuchsia-300" />
-              O tenant e o workflow sao criados por empresa. O webhook e fixo e a conta certa e escolhida pelo tenant enviado no payload.
+              Cada empresa opera no proprio ambiente. O cliente informa apenas os acessos necessarios e o Orion cuida da parte tecnica.
             </div>
           </CardContent>
         </Card>

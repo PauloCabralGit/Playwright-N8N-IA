@@ -19,6 +19,15 @@ function isValidUrl(value: string) {
   }
 }
 
+function isDiscordPlatformWebhook(value: string) {
+  try {
+    const url = new URL(value);
+    return /(^|\.)discord\.com$/i.test(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 function safeParseJson(rawBody: string) {
   try {
     return JSON.parse(rawBody) as Record<string, unknown>;
@@ -49,9 +58,10 @@ function pickDiscordContent(payload: Record<string, unknown> | null, status: num
 }
 
 function resolveDiscordWebhookCandidates(config: Awaited<ReturnType<typeof getN8nConfig>>) {
+  const explicitDiscordWebhook = String(config.discordWebhook || '').trim();
   const candidates = [
+    explicitDiscordWebhook && !isDiscordPlatformWebhook(explicitDiscordWebhook) ? explicitDiscordWebhook : '',
     buildDiscordWebhookUrl(config.webhookBaseUrl || config.webhookUrl),
-    String(config.webhookUrl || '').trim(),
   ];
 
   return candidates.filter((candidate, index, all) => {

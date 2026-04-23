@@ -451,8 +451,8 @@ export default function Page() {
     setN8nConnectionVerified(Boolean(nextSettings.workflowPublishedAt));
     setN8nConnectionMessage(
       nextSettings.workflowPublishedAt
-        ? 'Workflow publicado para este tenant. Teste novamente quando alterar as integrações.'
-        : 'Clique em Testar conexão para validar o webhook.'
+        ? 'Integracao preparada para este tenant. Valide novamente quando alterar os acessos.'
+        : 'Clique em Validar integracao para confirmar os acessos.'
     );
   };
 
@@ -476,7 +476,7 @@ export default function Page() {
 
     const requiredTextFields: { field: keyof N8nSettings; label: string }[] = [
       { field: 'appPublicUrl', label: 'URL pública do app' },
-      { field: 'webhookUrl', label: 'Webhook URL do n8n' },
+      { field: 'webhookUrl', label: 'Integracao do n8n' },
       { field: 'apiKey', label: 'API Key do n8n' },
       { field: 'discordBotToken', label: 'Discord Bot Token' },
       { field: 'githubOwner', label: 'GitHub Owner' },
@@ -515,12 +515,12 @@ export default function Page() {
 
     if (hasUnsavedN8nSettings) {
       return problems.length > 0
-        ? `salve as configurações antes de sincronizar. Campos com problema: ${formatN8nProblems(problems)}.`
+        ? `salve as configuracoes antes de sincronizar. Campos com problema: ${formatN8nProblems(problems)}.`
         : 'salve as configurações antes de sincronizar.';
     }
 
     if (problems.length > 0) {
-      return `revise as configurações antes de sincronizar. Campos com problema: ${formatN8nProblems(problems)}.`;
+      return `revise as configuracoes antes de sincronizar. Campos com problema: ${formatN8nProblems(problems)}.`;
     }
 
     if (!n8nConnectionVerified) {
@@ -554,7 +554,7 @@ export default function Page() {
     setN8nDraftSettings(nextSettings);
     setHasUnsavedN8nSettings(!sameN8nSettings(nextSettings, n8nSettings));
     setN8nConnectionVerified(false);
-    setN8nConnectionMessage('Configuração alterada. Teste a conexão novamente.');
+    setN8nConnectionMessage('Configuracao alterada. Valide a integracao novamente.');
   }, [n8nSettings]);
 
   const handleN8nSettingsSave = useCallback((nextSettings: N8nSettings) => {
@@ -562,7 +562,7 @@ export default function Page() {
     setN8nDraftSettings(nextSettings);
     setHasUnsavedN8nSettings(false);
     setN8nConnectionVerified(false);
-    setN8nConnectionMessage('Configuração salva. Clique em Testar conexão para validar o webhook.');
+    setN8nConnectionMessage('Configuracao salva. Clique em Validar integracao para confirmar os acessos.');
   }, []);
 
   const mergeN8nSettings = (primary: Partial<N8nSettings>, fallback?: Partial<N8nSettings>): N8nSettings => ({
@@ -644,8 +644,8 @@ export default function Page() {
       setN8nConnectionVerified(Boolean(nextSettings.workflowPublishedAt));
       setN8nConnectionMessage(
         nextSettings.workflowPublishedAt
-          ? 'Workflow publicado para este tenant. Teste novamente quando alterar as integrações.'
-          : 'Clique em Testar conexão para validar o webhook.'
+          ? 'Integracao preparada para este tenant. Valide novamente quando alterar os acessos.'
+          : 'Clique em Validar integracao para confirmar os acessos.'
       );
     } catch (error) {
       console.error('Failed to load n8n settings', error);

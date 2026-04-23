@@ -25,7 +25,7 @@ function validateSettings(settings: Partial<N8nSettings>) {
 
   const requiredFields: { key: keyof N8nSettings; label: string }[] = [
     { key: 'appPublicUrl', label: 'URL pública do app' },
-    { key: 'webhookBaseUrl', label: 'Base URL do webhook' },
+    { key: 'webhookBaseUrl', label: 'URL do ambiente n8n' },
     { key: 'apiKey', label: 'API Key do n8n' },
     { key: 'githubOwner', label: 'GitHub Owner' },
     { key: 'githubRepo', label: 'GitHub Repo' },
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           ok: false,
-          error: `Webhook respondeu com ${response.status}.`,
+          error: `Integracao respondeu com ${response.status}.`,
           details: text.slice(0, 500),
         },
         { status: response.status }
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      message: 'Conexão com o webhook confirmada.',
+      message: 'Integracao validada com sucesso.',
       details: text.slice(0, 500),
     });
   } catch (error) {
