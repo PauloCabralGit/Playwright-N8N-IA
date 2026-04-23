@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { after, NextRequest, NextResponse } from 'next/server';
 import { getN8nConfig } from '@/app/lib/n8n-config';
 import { buildDiscordWebhookUrl, getTenantByDiscordApplicationIdPublic } from '@/app/lib/tenant-auth';
 import {
@@ -100,6 +100,21 @@ async function callDiscordWebhook(candidates: string[], payload: Record<string, 
   throw new Error(lastError);
 }
 
+async function sendDiscordFollowup(applicationId: string, interactionToken: string, content: string) {
+  if (!applicationId || !interactionToken || !content) {
+    return;
+  }
+
+  await fetch(`https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ content }),
+    cache: 'no-store',
+  });
+}
+
 export async function POST(request: NextRequest) {
   const signature = request.headers.get('x-signature-ed25519') || '';
   const timestamp = request.headers.get('x-signature-timestamp') || '';
@@ -150,6 +165,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ type: 1 });
   }
 
+  const interactionToken = String(body.token || '').trim();
   const interactionId = String(body.id || '').trim();
   const normalized = normalizeDiscordInteractionPayload(body);
   const normalizedUser = String((normalized as Record<string, unknown>).user || '').trim();
@@ -180,37 +196,36 @@ export async function POST(request: NextRequest) {
       'discord',
   };
 
-  try {
-    console.info('Discord interaction forwarding to n8n', {
-      tenantId: tenant.id,
-      applicationId,
-      candidates: discordWebhookCandidates,
-      interactionType,
-    });
+  console.info('Discord interaction acknowledged and scheduled for n8n', {
+    tenantId: tenant.id,
+    applicationId,
+    candidates: discordWebhookCandidates,
+    interactionType,
+  });
 
-    const { response, responsePayload } = await callDiscordWebhook(discordWebhookCandidates, payloadToN8n);
-    const content = pickDiscordContent(responsePayload, response.status);
+  after(async () => {
+    try {
+      console.info('Discord interaction forwarding to n8n', {
+        tenantId: tenant.id,
+        applicationId,
+        candidates: discordWebhookCandidates,
+        interactionType,
+      });
 
-    return NextResponse.json({
-      type: 4,
-      data: {
-        content,
-      },
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Erro desconhecido ao chamar o n8n.';
-    console.error('Discord interaction failed before reaching a successful n8n response', {
-      tenantId: tenant.id,
-      applicationId,
-      candidates: discordWebhookCandidates,
-      error: message,
-    });
+      const { response, responsePayload } = await callDiscordWebhook(discordWebhookCandidates, payloadToN8n);
+      const content = pickDiscordContent(responsePayload, response.status);
+      await sendDiscordFollowup(applicationId, interactionToken, content);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro desconhecido ao chamar o n8n.';
+      console.error('Discord interaction failed during background forwarding', {
+        tenantId: tenant.id,
+        applicationId,
+        candidates: discordWebhookCandidates,
+        error: message,
+      });
+      await sendDiscordFollowup(applicationId, interactionToken, `Erro ao processar interacao: ${message}`);
+    }
+  });
 
-    return NextResponse.json({
-      type: 4,
-      data: {
-        content: `Erro ao processar interacao: ${message}`,
-      },
-    });
-  }
+  return NextResponse.json({ type: 5 });
 }
