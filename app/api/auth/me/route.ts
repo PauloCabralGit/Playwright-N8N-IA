@@ -1,16 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dbQuery } from '@/app/lib/postgres';
-import { SESSION_COOKIE_NAME } from '@/app/lib/tenant-auth';
+import { deleteSession, SESSION_COOKIE_NAME, SESSION_IDLE_TIMEOUT_SECONDS } from '@/app/lib/tenant-auth';
+
+const SESSION_IDLE_TIMEOUT_MS = SESSION_IDLE_TIMEOUT_SECONDS * 1000;
+
+function clearSessionResponse() {
+  const response = NextResponse.json({ ok: false, authenticated: false }, { status: 401 });
+  response.cookies.set(SESSION_COOKIE_NAME, '', {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 0,
+    secure: process.env.NODE_ENV === 'production',
+  });
+  return response;
+}
 
 export async function GET(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value || '';
 
   if (!token) {
-    return NextResponse.json({ ok: false, authenticated: false }, { status: 401 });
+    return clearSessionResponse();
   }
 
   const result = await dbQuery<Record<string, unknown>>(
     `SELECT
+      s.last_seen_at AS session_last_seen_at,
       a.id AS account_id,
       a.email AS account_email,
       a.company_name AS account_company_name,
@@ -51,12 +66,21 @@ export async function GET(request: NextRequest) {
 
   const row = result.rows[0];
   if (!row) {
-    return NextResponse.json({ ok: false, authenticated: false }, { status: 401 });
+    return clearSessionResponse();
   }
+
+  const lastSeenAt = String(row.session_last_seen_at || '');
+  const lastSeenMs = new Date(lastSeenAt).getTime();
+  if (!lastSeenAt || Number.isNaN(lastSeenMs) || Date.now() - lastSeenMs > SESSION_IDLE_TIMEOUT_MS) {
+    await deleteSession(token);
+    return clearSessionResponse();
+  }
+
+  await dbQuery(`UPDATE sessions SET last_seen_at = $2 WHERE token = $1`, [token, new Date().toISOString()]);
 
   const tenantExists = Boolean(row.tenant_id);
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     ok: true,
     authenticated: true,
     tenantMissing: !tenantExists,
@@ -97,4 +121,14 @@ export async function GET(request: NextRequest) {
         }
       : null,
   });
+
+  response.cookies.set(SESSION_COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: SESSION_IDLE_TIMEOUT_SECONDS,
+    secure: process.env.NODE_ENV === 'production',
+  });
+
+  return response;
 }

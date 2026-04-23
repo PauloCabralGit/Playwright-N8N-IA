@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateAccount, SESSION_COOKIE_NAME } from '@/app/lib/tenant-auth';
+import { authenticateAccount, SESSION_COOKIE_NAME, SESSION_IDLE_TIMEOUT_SECONDS } from '@/app/lib/tenant-auth';
 
 type LoginBody = {
   email: string;
@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       sameSite: 'lax',
       path: '/',
+      maxAge: SESSION_IDLE_TIMEOUT_SECONDS,
       secure: process.env.NODE_ENV === 'production',
     });
 

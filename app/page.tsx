@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AlertCircle,
@@ -110,6 +110,8 @@ const initialCards: DeliveryCard[] = [
     scenarios: [{ id: 'CT-FUNC-02', title: 'Authenticate a valid user', source: 'IA', status: 'Automated' }],
   },
 ];
+
+const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 
 type AuthAccount = {
   id: string;
@@ -328,6 +330,8 @@ export default function Page() {
   const [currentAccount, setCurrentAccount] = useState<AuthAccount | null>(null);
   const [currentTenant, setCurrentTenant] = useState<AuthTenant | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const idleLogoutTimerRef = useRef<number | null>(null);
+  const idleLogoutLockedRef = useRef(false);
   const [settings, setSettings] = useState({
     autoSync: true,
     aiSuggestions: true,
@@ -771,7 +775,6 @@ export default function Page() {
     }
   }, [authState, router]);
 
-
   const clearSyncMessage = () => {
     window.setTimeout(() => {
       setSyncStatus('idle');
@@ -792,7 +795,7 @@ export default function Page() {
     setPanelOpen(true);
   };
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
     } catch (error) {
@@ -806,7 +809,59 @@ export default function Page() {
       setN8nConnectionMessage('');
       setHasUnsavedN8nSettings(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (authState !== 'authenticated' || typeof window === 'undefined') {
+      if (idleLogoutTimerRef.current) {
+        window.clearTimeout(idleLogoutTimerRef.current);
+        idleLogoutTimerRef.current = null;
+      }
+      idleLogoutLockedRef.current = false;
+      return;
+    }
+
+    const triggerIdleLogout = async () => {
+      if (idleLogoutLockedRef.current) {
+        return;
+      }
+
+      idleLogoutLockedRef.current = true;
+      setSyncStatus('error');
+      setSyncMessage('Sessao encerrada por inatividade. Faca login novamente.');
+      await handleLogout();
+    };
+
+    const resetIdleTimer = () => {
+      if (idleLogoutTimerRef.current) {
+        window.clearTimeout(idleLogoutTimerRef.current);
+      }
+
+      idleLogoutTimerRef.current = window.setTimeout(() => {
+        void triggerIdleLogout();
+      }, SESSION_IDLE_TIMEOUT_MS);
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        resetIdleTimer();
+      }
+    };
+
+    const events: Array<keyof WindowEventMap> = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach((eventName) => window.addEventListener(eventName, resetIdleTimer, { passive: true }));
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    resetIdleTimer();
+
+    return () => {
+      if (idleLogoutTimerRef.current) {
+        window.clearTimeout(idleLogoutTimerRef.current);
+        idleLogoutTimerRef.current = null;
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      events.forEach((eventName) => window.removeEventListener(eventName, resetIdleTimer));
+    };
+  }, [authState, handleLogout]);
 
   const openCreateDialog = (column: ColumnId) => {
     setCreateColumn(column);

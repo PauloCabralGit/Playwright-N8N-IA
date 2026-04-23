@@ -6,6 +6,9 @@ import workflowTemplate from '@/updated_flow.json';
 
 export const SESSION_COOKIE_NAME = 'qa_session';
 const PASSWORD_PBKDF2_ITERATIONS = 100000;
+export const SESSION_IDLE_TIMEOUT_SECONDS = 60 * 30;
+const SESSION_IDLE_TIMEOUT_MS = SESSION_IDLE_TIMEOUT_SECONDS * 1000;
+const SESSION_TOUCH_THROTTLE_MS = 60 * 1000;
 
 export type TenantAccount = {
   id: string;
@@ -269,12 +272,34 @@ export function getCurrentSessionToken(request?: NextRequest) {
   return request?.cookies.get(SESSION_COOKIE_NAME)?.value || '';
 }
 
+function parseTimestamp(value: string) {
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function isSessionExpired(lastSeenAt: string) {
+  const lastSeen = parseTimestamp(lastSeenAt);
+  if (!lastSeen) return true;
+  return Date.now() - lastSeen > SESSION_IDLE_TIMEOUT_MS;
+}
+
+async function touchSession(token: string, lastSeenAt: string) {
+  if (!token) return;
+  const lastSeen = parseTimestamp(lastSeenAt);
+  if (lastSeen && Date.now() - lastSeen < SESSION_TOUCH_THROTTLE_MS) {
+    return;
+  }
+
+  await dbQuery(`UPDATE sessions SET last_seen_at = $2 WHERE token = $1`, [token, new Date().toISOString()]);
+}
+
 export async function getCurrentAccount(request?: NextRequest) {
   const token = getCurrentSessionToken(request);
   if (!token) return null;
 
-  const result = await dbQuery<{ account_id: string } & Record<string, unknown>>(
+  const result = await dbQuery<{ last_seen_at: string } & Record<string, unknown>>(
     `SELECT a.*
+            , s.last_seen_at
      FROM sessions s
      JOIN accounts a ON a.id = s.account_id
      WHERE s.token = $1
@@ -282,7 +307,15 @@ export async function getCurrentAccount(request?: NextRequest) {
     [token],
   );
 
-  return mapAccount(result.rows[0] as Record<string, unknown> | undefined);
+  const row = result.rows[0] as ({ last_seen_at?: string } & Record<string, unknown>) | undefined;
+  const lastSeenAt = String(row?.last_seen_at || '');
+  if (!row || isSessionExpired(lastSeenAt)) {
+    await deleteSession(token);
+    return null;
+  }
+
+  await touchSession(token, lastSeenAt);
+  return mapAccount(row);
 }
 
 export async function getCurrentTenant(request?: NextRequest) {
