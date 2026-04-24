@@ -9,6 +9,14 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+type NextRequestContextValue = {
+  waitUntil?: (promise: Promise<unknown>) => void;
+};
+
+type NextRequestContext = {
+  get?: () => NextRequestContextValue | undefined;
+};
+
 function isValidUrl(value: string) {
   try {
     new URL(value);
@@ -113,6 +121,21 @@ async function sendDiscordFollowup(applicationId: string, interactionToken: stri
     body: JSON.stringify({ content }),
     cache: 'no-store',
   });
+}
+
+function scheduleBackgroundTask(task: Promise<unknown>) {
+  const requestContext = (globalThis as typeof globalThis & {
+    [key: symbol]: NextRequestContext | undefined;
+  })[Symbol.for('@next/request-context')];
+  const waitUntil = requestContext?.get?.()?.waitUntil;
+
+  if (typeof waitUntil === 'function') {
+    waitUntil(task);
+    return 'waitUntil';
+  }
+
+  after(() => task);
+  return 'after';
 }
 
 export async function POST(request: NextRequest) {
@@ -258,7 +281,7 @@ export async function POST(request: NextRequest) {
     interactionType,
   });
 
-  after(async () => {
+  const deliveryMode = scheduleBackgroundTask((async () => {
     try {
       console.info('Discord interaction forwarding to n8n', {
         tenantId: tenant.id,
@@ -280,6 +303,12 @@ export async function POST(request: NextRequest) {
       });
       await sendDiscordFollowup(applicationId, interactionToken, `Erro ao processar interacao: ${message}`);
     }
+  })());
+
+  console.info('Discord background delivery mode selected', {
+    tenantId: tenant.id,
+    applicationId,
+    deliveryMode,
   });
 
   return NextResponse.json({ type: 5 });
