@@ -127,6 +127,11 @@ export function SettingsSection({ settings, toggleSetting, n8nSettings, tenantDa
   const discordInteractionEndpoint = n8nForm.appPublicUrl
     ? `${n8nForm.appPublicUrl.replace(/\/+$/, '')}/api/discord/interactions`
     : '';
+  const discordInstallUrl = n8nForm.discordApplicationId
+    ? `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(
+        n8nForm.discordApplicationId
+      )}&scope=bot%20applications.commands&permissions=274877975552`
+    : '';
   const hasLoadedN8nConfig = Boolean(
     n8nForm.webhookUrl ||
       n8nForm.apiKey ||
@@ -504,6 +509,39 @@ export function SettingsSection({ settings, toggleSetting, n8nSettings, tenantDa
               placeholder="Resolvida automaticamente apos salvar"
               className="mt-1 rounded-xl border-white/10 bg-white/5 text-white text-xs placeholder:text-slate-500"
             />
+          </div>
+          <div className="md:col-span-2 rounded-2xl border border-white/10 bg-black/20 p-3 text-xs text-slate-300">
+            <div className="font-semibold text-white">Reinstalacao da app do Discord</div>
+            <p className="mt-1 text-slate-400">
+              Se os comandos ainda forem de outra app, remova a integracao antiga do servidor e reinstale a app abaixo. Ela usa o Application ID resolvido nesta configuracao.
+            </p>
+            <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto]">
+              <Input
+                readOnly
+                value={discordInstallUrl}
+                placeholder="Salve a integracao para gerar o link de instalacao"
+                className="rounded-xl border-white/10 bg-white/5 text-white text-xs placeholder:text-slate-500"
+              />
+              <a
+                href={discordInstallUrl || undefined}
+                target="_blank"
+                rel="noreferrer"
+                className={cn(
+                  'inline-flex items-center justify-center rounded-xl border px-4 py-2 text-xs font-medium transition',
+                  discordInstallUrl
+                    ? 'border-fuchsia-400/30 bg-fuchsia-500/10 text-fuchsia-100 hover:bg-fuchsia-500/15'
+                    : 'pointer-events-none border-white/10 bg-white/5 text-slate-500'
+                )}
+              >
+                Reinstalar app no servidor
+              </a>
+            </div>
+            <ol className="mt-3 list-decimal space-y-1 pl-4 text-slate-400">
+              <li>Remova a app antiga do servidor, se existir.</li>
+              <li>Abra o link acima e instale a app correta.</li>
+              <li>Confirme se o endpoint de interacao continua apontando para o Orion.</li>
+              <li>Teste novamente o comando no Discord.</li>
+            </ol>
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-300">GitHub Owner</label>
