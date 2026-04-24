@@ -19,7 +19,7 @@ type NextRequestContext = {
 
 type DiscordWebhookCallResult = {
   response: Response;
-  responsePayload: Record<string, unknown> | null;
+  responsePayload: unknown;
 };
 
 function isValidUrl(value: string) {
@@ -48,31 +48,97 @@ function safeParseJson(rawBody: string) {
   }
 }
 
-function pickDiscordContent(payload: Record<string, unknown> | null, status: number) {
+function splitDiscordMessage(content: string, maxLength = 1900) {
+  const normalized = content.trim();
+  if (!normalized) return [];
+
+  const chunks: string[] = [];
+  let current = normalized;
+  while (current.length > maxLength) {
+    let sliceAt = current.lastIndexOf('\n', maxLength);
+    if (sliceAt < 400) {
+      sliceAt = current.lastIndexOf(' ', maxLength);
+    }
+    if (sliceAt < 400) {
+      sliceAt = maxLength;
+    }
+    chunks.push(current.slice(0, sliceAt).trim());
+    current = current.slice(sliceAt).trim();
+  }
+  if (current) chunks.push(current);
+  return chunks.filter(Boolean);
+}
+
+function extractDiscordContents(payload: unknown): string[] {
+  if (!payload) return [];
+
+  if (typeof payload === 'string') {
+    return payload.trim() ? [payload.trim()] : [];
+  }
+
+  if (Array.isArray(payload)) {
+    return payload.flatMap((entry) => extractDiscordContents(entry));
+  }
+
+  if (typeof payload !== 'object') {
+    return [];
+  }
+
+  const record = payload as Record<string, unknown>;
+  const directCandidates = ['content', 'message', 'error', 'output', 'text'];
+  for (const key of directCandidates) {
+    const value = record[key];
+    if (typeof value === 'string' && value.trim()) {
+      return [value.trim()];
+    }
+  }
+
+  if (record.json) {
+    const nested = extractDiscordContents(record.json);
+    if (nested.length > 0) return nested;
+  }
+
+  if (record.body) {
+    const nested = extractDiscordContents(record.body);
+    if (nested.length > 0) return nested;
+  }
+
+  if (record.data) {
+    const nested = extractDiscordContents(record.data);
+    if (nested.length > 0) return nested;
+  }
+
+  return [];
+}
+
+function pickDiscordContents(payload: unknown, status: number) {
+  const extracted = extractDiscordContents(payload)
+    .flatMap((entry) => splitDiscordMessage(entry))
+    .filter(Boolean);
+
+  if (extracted.length > 0) {
+    return extracted;
+  }
+
   if (!payload) {
-    return status >= 400 ? `Falha ao processar a interacao (${status}).` : 'Processado com sucesso.';
+    return [status >= 400 ? `Falha ao processar a interacao (${status}).` : 'Processado com sucesso.'];
   }
 
-  const contentFromContent = typeof payload.content === 'string' ? payload.content.trim() : '';
-  const contentFromMessage = typeof payload.message === 'string' ? payload.message.trim() : '';
-  const contentFromError = typeof payload.error === 'string' ? payload.error.trim() : '';
-  const content = contentFromContent || contentFromMessage || contentFromError;
-
-  if (content) {
-    return content;
+  if (typeof payload === 'object' && payload !== null && (payload as Record<string, unknown>).ok === false) {
+    return [`Falha ao processar a interacao (${status}).`];
   }
 
-  if (payload.ok === false) {
-    return `Falha ao processar a interacao (${status}).`;
-  }
+  return ['Processado com sucesso.'];
+}
 
-  return 'Processado com sucesso.';
+function pickDiscordContent(payload: unknown, status: number) {
+  return pickDiscordContents(payload, status)[0] || 'Processado com sucesso.';
 }
 
 function describeWebhookFailure(
   candidate: string,
   status: number,
-  payload: Record<string, unknown> | null,
+  payload: unknown,
 ) {
   const content = pickDiscordContent(payload, status);
   const cleanContent = content.trim();
@@ -121,7 +187,7 @@ async function callDiscordWebhook(candidates: string[], payload: Record<string, 
         cache: 'no-store',
       });
 
-      const responsePayload = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+      const responsePayload = await response.json().catch(() => null);
       if (response.ok) {
         return { response, responsePayload };
       }
@@ -135,30 +201,54 @@ async function callDiscordWebhook(candidates: string[], payload: Record<string, 
   throw new Error(lastError);
 }
 
-async function sendDiscordFollowup(applicationId: string, interactionToken: string, content: string) {
-  if (!applicationId || !interactionToken || !content) {
+async function sendDiscordDeferredResponse(applicationId: string, interactionToken: string, messages: string[]) {
+  if (!applicationId || !interactionToken || messages.length === 0) {
     return;
   }
 
-  const response = await fetch(`https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}?wait=true`, {
-    method: 'POST',
+  const [firstMessage, ...extraMessages] = messages;
+
+  const initialResponse = await fetch(`https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}/messages/@original`, {
+    method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content: firstMessage }),
     cache: 'no-store',
   });
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    throw new Error(`Discord follow-up respondeu com ${response.status}: ${body || 'sem corpo'}`);
+  if (!initialResponse.ok) {
+    const body = await initialResponse.text().catch(() => '');
+    throw new Error(`Discord resposta original respondeu com ${initialResponse.status}: ${body || 'sem corpo'}`);
   }
 
-  console.info('Discord follow-up sent', {
+  console.info('Discord original response updated', {
     applicationId,
-    contentLength: content.length,
-    status: response.status,
+    contentLength: firstMessage.length,
+    status: initialResponse.status,
   });
+
+  for (const message of extraMessages) {
+    const followupResponse = await fetch(`https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}?wait=true`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ content: message }),
+      cache: 'no-store',
+    });
+
+    if (!followupResponse.ok) {
+      const body = await followupResponse.text().catch(() => '');
+      throw new Error(`Discord follow-up respondeu com ${followupResponse.status}: ${body || 'sem corpo'}`);
+    }
+
+    console.info('Discord follow-up sent', {
+      applicationId,
+      contentLength: message.length,
+      status: followupResponse.status,
+    });
+  }
 }
 
 function isImmediateDiscordAction(action: string) {
@@ -373,8 +463,8 @@ export async function POST(request: NextRequest) {
       });
 
       const { response, responsePayload } = await callDiscordWebhook(discordWebhookCandidates, payloadToN8n);
-      const content = pickDiscordContent(responsePayload, response.status);
-      await sendDiscordFollowup(applicationId, interactionToken, content);
+      const contents = pickDiscordContents(responsePayload, response.status);
+      await sendDiscordDeferredResponse(applicationId, interactionToken, contents);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro desconhecido ao chamar o n8n.';
       console.error('Discord interaction failed during background forwarding', {
@@ -384,7 +474,7 @@ export async function POST(request: NextRequest) {
         error: message,
       });
       try {
-        await sendDiscordFollowup(applicationId, interactionToken, `Erro ao processar interacao: ${message}`);
+        await sendDiscordDeferredResponse(applicationId, interactionToken, [`Erro ao processar interacao: ${message}`]);
       } catch (followupError) {
         console.error('Discord follow-up failed after webhook error', {
           tenantId: tenant.id,
