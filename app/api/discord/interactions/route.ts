@@ -135,6 +135,19 @@ function pickDiscordContent(payload: unknown, status: number) {
   return pickDiscordContents(payload, status)[0] || 'Processado com sucesso.';
 }
 
+function isWorkflowStartedPlaceholder(payload: unknown) {
+  const contents = extractDiscordContents(payload).map((entry) => entry.trim().toLowerCase());
+  if (contents.length === 0) {
+    return false;
+  }
+
+  return contents.every((entry) =>
+    entry === 'workflow was started' ||
+    entry === 'workflow started' ||
+    entry === 'workflow foi iniciado'
+  );
+}
+
 function describeWebhookFailure(
   candidate: string,
   status: number,
@@ -226,6 +239,7 @@ async function sendDiscordDeferredResponse(applicationId: string, interactionTok
     applicationId,
     contentLength: firstMessage.length,
     status: initialResponse.status,
+    contentPreview: firstMessage.slice(0, 180),
   });
 
   for (const message of extraMessages) {
@@ -247,6 +261,7 @@ async function sendDiscordDeferredResponse(applicationId: string, interactionTok
       applicationId,
       contentLength: message.length,
       status: followupResponse.status,
+      contentPreview: message.slice(0, 180),
     });
   }
 }
@@ -434,7 +449,7 @@ export async function POST(request: NextRequest) {
   });
 
   const immediateResult = await tryImmediateDiscordResponse(payloadToN8n, discordWebhookCandidates);
-  if (immediateResult) {
+  if (immediateResult && !isWorkflowStartedPlaceholder(immediateResult.responsePayload)) {
     const content = pickDiscordContent(immediateResult.responsePayload, immediateResult.response.status);
 
     console.info('Discord interaction responded immediately', {
@@ -443,6 +458,7 @@ export async function POST(request: NextRequest) {
       action: String(payloadToN8n.action || ''),
       status: immediateResult.response.status,
       contentLength: content.length,
+      contentPreview: content.slice(0, 180),
     });
 
     return NextResponse.json({
@@ -450,6 +466,14 @@ export async function POST(request: NextRequest) {
       data: {
         content,
       },
+    });
+  }
+
+  if (immediateResult && isWorkflowStartedPlaceholder(immediateResult.responsePayload)) {
+    console.info('Discord immediate response ignored because webhook returned only start placeholder', {
+      tenantId: tenant.id,
+      applicationId,
+      action: String(payloadToN8n.action || ''),
     });
   }
 
@@ -464,6 +488,14 @@ export async function POST(request: NextRequest) {
 
       const { response, responsePayload } = await callDiscordWebhook(discordWebhookCandidates, payloadToN8n);
       const contents = pickDiscordContents(responsePayload, response.status);
+      console.info('Discord webhook returned content candidates', {
+        tenantId: tenant.id,
+        applicationId,
+        action: String(payloadToN8n.action || ''),
+        status: response.status,
+        messageCount: contents.length,
+        firstPreview: String(contents[0] || '').slice(0, 180),
+      });
       await sendDiscordDeferredResponse(applicationId, interactionToken, contents);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro desconhecido ao chamar o n8n.';
