@@ -647,10 +647,41 @@ export default function Page() {
           ? 'Integracao preparada para este tenant. Valide novamente quando alterar os acessos.'
           : 'Clique em Validar integracao para confirmar os acessos.'
       );
+      setCurrentTenant((prev) => {
+        if (prev?.id) return prev;
+        if (!nextSettings.tenantId) return prev;
+
+        return {
+          id: nextSettings.tenantId,
+          slug: nextSettings.tenantSlug || '',
+          companyName: nextSettings.companyName || currentAccount?.companyName || '',
+          cnpj: nextSettings.cnpj || currentAccount?.cnpj || '',
+          address: nextSettings.address || currentAccount?.address || '',
+          appPublicUrl: nextSettings.appPublicUrl || '',
+          webhookBaseUrl: nextSettings.webhookBaseUrl || '',
+          webhookPath: nextSettings.webhookPath || '',
+          webhookUrl: nextSettings.webhookUrl || '',
+          apiKey: nextSettings.apiKey || '',
+          discordWebhook: nextSettings.discordWebhook || '',
+          discordApplicationId: nextSettings.discordApplicationId || '',
+          discordPublicKey: nextSettings.discordPublicKey || '',
+          discordBotToken: nextSettings.discordBotToken || '',
+          discordGuildId: nextSettings.discordGuildId || '',
+          discordCommandName: nextSettings.discordCommandName || 'qa',
+          githubOwner: nextSettings.githubOwner || '',
+          githubRepo: nextSettings.githubRepo || '',
+          githubBranch: nextSettings.githubBranch || 'main',
+          githubToken: nextSettings.githubToken || '',
+          workflowPublishedAt: nextSettings.workflowPublishedAt || '',
+          workflowDownloadUrl: nextSettings.workflowDownloadUrl || '',
+          loadedAt: nextSettings.loadedAt || '',
+          updatedAt: nextSettings.updatedAt || '',
+        };
+      });
     } catch (error) {
       console.error('Failed to load n8n settings', error);
     }
-  }, []);
+  }, [currentAccount?.address, currentAccount?.cnpj, currentAccount?.companyName]);
 
   const loadTeamMembers = useCallback(async () => {
     try {
@@ -1285,6 +1316,14 @@ export default function Page() {
   const totalScenarios = cards.reduce((acc, card) => acc + card.scenarios.length, 0);
   const totalAi = cards.reduce((acc, card) => acc + card.scenarios.filter((scenario) => scenario.source === 'IA').length, 0);
   const totalReady = cards.filter((card) => card.column === 'qa').length;
+  const hasTenantDataResolved = Boolean(
+    currentTenant?.id ||
+      n8nSettings.tenantId ||
+      n8nSettings.companyName ||
+      n8nSettings.appPublicUrl ||
+      n8nSettings.webhookUrl ||
+      n8nSettings.webhookBaseUrl
+  );
 
   const handleCreate = () => {
     const acceptanceCriteria = form.acceptanceCriteria
@@ -1439,7 +1478,7 @@ export default function Page() {
                   </div>
                 )}
 
-                {currentAccount?.tenantId && !currentTenant && (
+                {currentAccount?.tenantId && !currentTenant && !hasTenantDataResolved && (
                   <div className="rounded-2xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
                     <div className="flex items-start gap-3">
                       <AlertCircle className="mt-0.5 h-4 w-4 text-amber-300" />
@@ -1617,7 +1656,7 @@ export default function Page() {
                   toggleSetting={toggleSetting}
                   tenantData={currentTenant}
                   tenantId={currentAccount?.tenantId || currentTenant?.id || ''}
-                  tenantMissing={Boolean(currentAccount?.tenantId && !currentTenant)}
+                  tenantMissing={Boolean(currentAccount?.tenantId && !currentTenant && !hasTenantDataResolved)}
                   n8nSettings={n8nSettings}
                   onN8nSettingsSave={handleN8nSettingsSave}
                   onN8nSettingsChange={markN8nDraftChanged}
