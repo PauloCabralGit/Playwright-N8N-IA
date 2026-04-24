@@ -59,18 +59,34 @@ function toWorkflowRow(card: DeliveryCard) {
 }
 
 export async function GET(request: NextRequest) {
-  const tenant = await getTenantFromRequest(request);
-  if (!tenant) {
-    return NextResponse.json({ ok: false, error: 'Tenant não encontrado.' }, { status: 404 });
-  }
+  try {
+    const tenant = await getTenantFromRequest(request);
+    if (!tenant) {
+      return NextResponse.json({ ok: false, error: 'Tenant não encontrado.' }, { status: 404 });
+    }
 
-  const items = await getBoardCards(tenant.id);
-  return NextResponse.json({
-    ok: true,
-    tenantId: tenant.id,
-    tenantSlug: tenant.slug,
-    items: items.map(toWorkflowRow),
-  });
+    const items = await getBoardCards(tenant.id);
+    return NextResponse.json({
+      ok: true,
+      tenantId: tenant.id,
+      tenantSlug: tenant.slug,
+      items: items.map(toWorkflowRow),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erro ao carregar cards.';
+
+    console.error('N8N board cards GET failed', {
+      error: message,
+      path: request.nextUrl.pathname,
+      tenantId: request.nextUrl.searchParams.get('tenantId') || request.nextUrl.searchParams.get('tenant') || '',
+      tenantSlug:
+        request.nextUrl.searchParams.get('tenantSlug') ||
+        request.nextUrl.searchParams.get('slug') ||
+        '',
+    });
+
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
 }
 
 export async function POST(request: NextRequest) {
