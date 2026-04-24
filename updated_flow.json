@@ -828,7 +828,8 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "discord-qa",
-        "options": {}
+        "options": {},
+        "responseMode": "lastNode"
       },
       "id": "e6e6b96e-4b20-4c02-95be-3481664ea7e1",
       "name": "Webhook Discord",
