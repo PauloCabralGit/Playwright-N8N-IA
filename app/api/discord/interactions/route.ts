@@ -17,6 +17,11 @@ type NextRequestContext = {
   get?: () => NextRequestContextValue | undefined;
 };
 
+type DiscordWebhookCallResult = {
+  response: Response;
+  responsePayload: Record<string, unknown> | null;
+};
+
 function isValidUrl(value: string) {
   try {
     new URL(value);
@@ -135,7 +140,7 @@ async function sendDiscordFollowup(applicationId: string, interactionToken: stri
     return;
   }
 
-  await fetch(`https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}`, {
+  const response = await fetch(`https://discord.com/api/v10/webhooks/${applicationId}/${interactionToken}?wait=true`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -143,6 +148,41 @@ async function sendDiscordFollowup(applicationId: string, interactionToken: stri
     body: JSON.stringify({ content }),
     cache: 'no-store',
   });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`Discord follow-up respondeu com ${response.status}: ${body || 'sem corpo'}`);
+  }
+
+  console.info('Discord follow-up sent', {
+    applicationId,
+    contentLength: content.length,
+    status: response.status,
+  });
+}
+
+function isImmediateDiscordAction(action: string) {
+  return ['buscar', 'ver', 'status', 'editar', 'deletar', 'pingqa'].includes(action);
+}
+
+async function tryImmediateDiscordResponse(
+  normalizedPayload: Record<string, unknown>,
+  candidates: string[],
+): Promise<DiscordWebhookCallResult | null> {
+  const action = String(normalizedPayload.action || '').trim().toLowerCase();
+  if (!isImmediateDiscordAction(action)) {
+    return null;
+  }
+
+  try {
+    return await callDiscordWebhook(candidates, normalizedPayload);
+  } catch (error) {
+    console.warn('Immediate Discord response fallback to deferred mode', {
+      action,
+      error: error instanceof Error ? error.message : String(error || 'unknown error'),
+    });
+    return null;
+  }
 }
 
 function scheduleBackgroundTask(task: Promise<unknown>) {
@@ -303,6 +343,26 @@ export async function POST(request: NextRequest) {
     interactionType,
   });
 
+  const immediateResult = await tryImmediateDiscordResponse(payloadToN8n, discordWebhookCandidates);
+  if (immediateResult) {
+    const content = pickDiscordContent(immediateResult.responsePayload, immediateResult.response.status);
+
+    console.info('Discord interaction responded immediately', {
+      tenantId: tenant.id,
+      applicationId,
+      action: String(payloadToN8n.action || ''),
+      status: immediateResult.response.status,
+      contentLength: content.length,
+    });
+
+    return NextResponse.json({
+      type: 4,
+      data: {
+        content,
+      },
+    });
+  }
+
   const deliveryMode = scheduleBackgroundTask((async () => {
     try {
       console.info('Discord interaction forwarding to n8n', {
@@ -323,7 +383,15 @@ export async function POST(request: NextRequest) {
         candidates: discordWebhookCandidates,
         error: message,
       });
-      await sendDiscordFollowup(applicationId, interactionToken, `Erro ao processar interacao: ${message}`);
+      try {
+        await sendDiscordFollowup(applicationId, interactionToken, `Erro ao processar interacao: ${message}`);
+      } catch (followupError) {
+        console.error('Discord follow-up failed after webhook error', {
+          tenantId: tenant.id,
+          applicationId,
+          error: followupError instanceof Error ? followupError.message : String(followupError || 'unknown error'),
+        });
+      }
     }
   })());
 
