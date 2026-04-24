@@ -122,6 +122,7 @@ export async function POST(request: NextRequest) {
   const body = safeParseJson(rawBody);
 
   if (!body) {
+    console.error('Discord interaction rejected: invalid JSON payload');
     return NextResponse.json({ error: 'Payload invalido.' }, { status: 400 });
   }
 
@@ -131,19 +132,45 @@ export async function POST(request: NextRequest) {
 
   const applicationId = String(body.application_id || application?.id || application?.application_id || '').trim();
   if (!applicationId) {
+    console.error('Discord interaction rejected: missing application id');
     return NextResponse.json({ error: 'Discord application id ausente.' }, { status: 400 });
   }
 
+  console.info('Discord interaction received', {
+    applicationId,
+    interactionType: Number(body.type || 0),
+    hasSignature: Boolean(signature),
+    hasTimestamp: Boolean(timestamp),
+  });
+
   const tenant = await getTenantByDiscordApplicationIdPublic(applicationId);
   if (!tenant) {
+    console.error('Discord interaction rejected: tenant not found for application id', {
+      applicationId,
+    });
     return NextResponse.json({ error: 'Tenant do Discord nao encontrado.' }, { status: 404 });
   }
+
+  console.info('Discord tenant resolved', {
+    applicationId,
+    tenantId: tenant.id,
+    tenantSlug: tenant.slug,
+    hasDiscordPublicKey: Boolean(String(tenant.discordPublicKey || '').trim()),
+    hasDiscordBotToken: Boolean(String(tenant.discordBotToken || '').trim()),
+    hasWebhookBaseUrl: Boolean(String(tenant.webhookBaseUrl || '').trim()),
+    hasDiscordWebhook: Boolean(String(tenant.discordWebhook || '').trim()),
+  });
 
   let publicKey = String(tenant.discordPublicKey || '').trim();
   if (!publicKey && tenant.discordBotToken) {
     try {
       const resolvedDiscord = await resolveDiscordApplicationFromBotToken(tenant.discordBotToken);
       publicKey = resolvedDiscord.publicKey || publicKey;
+      console.info('Discord public key resolved from bot token', {
+        applicationId,
+        tenantId: tenant.id,
+        resolved: Boolean(publicKey),
+      });
     } catch (error) {
       console.warn('Unable to resolve Discord public key for interaction verification:', error);
     }
@@ -157,8 +184,20 @@ export async function POST(request: NextRequest) {
   });
 
   if (!verified) {
+    console.error('Discord interaction rejected: invalid signature', {
+      applicationId,
+      tenantId: tenant.id,
+      hasPublicKey: Boolean(publicKey),
+      signatureLength: signature.length,
+      timestampLength: timestamp.length,
+    });
     return NextResponse.json({ error: 'Assinatura do Discord invalida.' }, { status: 401 });
   }
+
+  console.info('Discord signature verified', {
+    applicationId,
+    tenantId: tenant.id,
+  });
 
   const interactionType = Number(body.type || 0);
   if (interactionType === 1) {
@@ -172,7 +211,23 @@ export async function POST(request: NextRequest) {
   const config = await getN8nConfig(request, tenant.id);
   const discordWebhookCandidates = resolveDiscordWebhookCandidates(config);
 
+  console.info('Discord webhook candidates resolved', {
+    applicationId,
+    tenantId: tenant.id,
+    webhookBaseUrl: config.webhookBaseUrl || '',
+    webhookUrl: config.webhookUrl || '',
+    discordWebhook: config.discordWebhook || '',
+    candidates: discordWebhookCandidates,
+  });
+
   if (discordWebhookCandidates.length === 0) {
+    console.error('Discord interaction rejected: no webhook candidates', {
+      applicationId,
+      tenantId: tenant.id,
+      webhookBaseUrl: config.webhookBaseUrl || '',
+      webhookUrl: config.webhookUrl || '',
+      discordWebhook: config.discordWebhook || '',
+    });
     return NextResponse.json(
       { error: 'Webhook do Discord nao configurado para o tenant.' },
       { status: 400 },

@@ -124,6 +124,9 @@ export function SettingsSection({ settings, toggleSetting, n8nSettings, tenantDa
   const [n8nWarnings, setN8nWarnings] = useState<string[]>([]);
   const [bootstrapTenantId, setBootstrapTenantId] = useState('');
   const resolvedTenantId = tenantId || bootstrapTenantId || n8nForm.tenantId || '';
+  const discordInteractionEndpoint = n8nForm.appPublicUrl
+    ? `${n8nForm.appPublicUrl.replace(/\/+$/, '')}/api/discord/interactions`
+    : '';
   const hasLoadedN8nConfig = Boolean(
     n8nForm.webhookUrl ||
       n8nForm.apiKey ||
@@ -441,6 +444,12 @@ export function SettingsSection({ settings, toggleSetting, n8nSettings, tenantDa
               Informe somente a URL do ambiente n8n, a chave da API, o token do bot do Discord e o repositorio do GitHub. O Orion cuida dos endpoints internos e das rotas tecnicas por baixo.
             </p>
           </div>
+          <div className="md:col-span-2 rounded-2xl border border-violet-400/20 bg-violet-500/10 p-3 text-xs text-violet-100">
+            <div className="font-semibold">Configuracao do Discord</div>
+            <p className="mt-1 text-violet-100/80">
+              Para o Discord funcionar, use o endpoint abaixo no Developer Portal. O Application ID e a Public Key sao resolvidos automaticamente quando o token do bot estiver correto.
+            </p>
+          </div>
           <div>
             <label className="block text-xs font-medium text-slate-300">Discord Bot Token</label>
             <Input
@@ -466,6 +475,33 @@ export function SettingsSection({ settings, toggleSetting, n8nSettings, tenantDa
               value={n8nForm.discordCommandName}
               onChange={(e) => updateN8nForm({ discordCommandName: e.target.value })}
               placeholder="qa"
+              className="mt-1 rounded-xl border-white/10 bg-white/5 text-white text-xs placeholder:text-slate-500"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-xs font-medium text-slate-300">Endpoint de interacao do Discord</label>
+            <Input
+              readOnly
+              value={discordInteractionEndpoint}
+              placeholder="Preencha a URL publica do app para gerar este endpoint"
+              className="mt-1 rounded-xl border-white/10 bg-white/5 text-white text-xs placeholder:text-slate-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-300">Discord Application ID</label>
+            <Input
+              readOnly
+              value={n8nForm.discordApplicationId || ''}
+              placeholder="Resolvido automaticamente apos salvar"
+              className="mt-1 rounded-xl border-white/10 bg-white/5 text-white text-xs placeholder:text-slate-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-300">Discord Public Key</label>
+            <Input
+              readOnly
+              value={n8nForm.discordPublicKey || ''}
+              placeholder="Resolvida automaticamente apos salvar"
               className="mt-1 rounded-xl border-white/10 bg-white/5 text-white text-xs placeholder:text-slate-500"
             />
           </div>
