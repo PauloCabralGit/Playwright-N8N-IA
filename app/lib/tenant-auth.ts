@@ -673,7 +673,8 @@ export async function updateTenantForRequest(request: NextRequest | undefined, p
 export function buildTenantWorkflow(tenant: TenantProfile) {
   const template = readWorkflowTemplate();
 
-  const fallbackAppPublicUrl = 'https://mathilde-obcuneate-allusively.ngrok-free.dev';
+  const fallbackAppPublicUrl =
+    (process.env.APP_PUBLIC_URL || 'https://orionsystem.orionsystem.workers.dev').trim();
   const resolvedAppPublicUrl = (tenant.appPublicUrl || fallbackAppPublicUrl).trim();
   const appPublicUrl = resolvedAppPublicUrl.replace(/\/+$/, '');
   const configEndpoint = `={{ '${appPublicUrl}/api/settings/n8n/config?tenant=' + encodeURIComponent($json.tenantId || $json.tenantSlug || '') }}`;
