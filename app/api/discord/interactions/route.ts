@@ -64,6 +64,28 @@ function pickDiscordContent(payload: Record<string, unknown> | null, status: num
   return 'Processado com sucesso.';
 }
 
+function describeWebhookFailure(
+  candidate: string,
+  status: number,
+  payload: Record<string, unknown> | null,
+) {
+  const content = pickDiscordContent(payload, status);
+  const cleanContent = content.trim();
+  const path = (() => {
+    try {
+      return new URL(candidate).pathname;
+    } catch {
+      return candidate;
+    }
+  })();
+
+  if (cleanContent) {
+    return `${path} respondeu com ${status}: ${cleanContent}`;
+  }
+
+  return `${path} respondeu com ${status}.`;
+}
+
 function resolveDiscordWebhookCandidates(config: Awaited<ReturnType<typeof getN8nConfig>>) {
   const explicitDiscordWebhook = String(config.discordWebhook || '').trim();
   const candidates = [
@@ -99,7 +121,7 @@ async function callDiscordWebhook(candidates: string[], payload: Record<string, 
         return { response, responsePayload };
       }
 
-      lastError = `Webhook ${candidate} respondeu com ${response.status}.`;
+      lastError = describeWebhookFailure(candidate, response.status, responsePayload);
     } catch (error) {
       lastError = error instanceof Error ? error.message : 'Erro desconhecido ao chamar o n8n.';
     }

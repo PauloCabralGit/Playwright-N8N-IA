@@ -58,6 +58,33 @@ type ScenarioEvidenceRow = {
   evidence_value: string;
 };
 
+function isMissingScenarioArtifactsRelation(error: unknown) {
+  const candidate = error as { code?: string; message?: string };
+  const message = String(candidate?.message || '');
+  const referencesScenarioArtifactsRelation =
+    /relation\s+"?scenario_records"?\s+does not exist/i.test(message) ||
+    /relation\s+"?scenario_execution_records"?\s+does not exist/i.test(message) ||
+    /relation\s+"?scenario_bug_records"?\s+does not exist/i.test(message) ||
+    /relation\s+"?scenario_evidence_records"?\s+does not exist/i.test(message) ||
+    /scenario_records/i.test(message) ||
+    /scenario_execution_records/i.test(message) ||
+    /scenario_bug_records/i.test(message) ||
+    /scenario_evidence_records/i.test(message);
+
+  return (
+    candidate?.code === '42P01' ||
+    referencesScenarioArtifactsRelation
+  );
+}
+
+function logScenarioArtifactsFallback(action: string, error: unknown, details: Record<string, string>) {
+  const message = error instanceof Error ? error.message : String(error || 'unknown error');
+  console.warn(`Scenario artifacts unavailable during ${action}; falling back to legacy card JSON mode.`, {
+    ...details,
+    error: message,
+  });
+}
+
 export function getScenarioFeaturePath(scenario: Scenario) {
   const category = String(scenario.category || '').toLowerCase();
   const dir = category === 'performance' ? 'features/performance' : 'features/funcionais';
@@ -258,34 +285,47 @@ async function upsertScenarioRecordsForCardClient(client: Client, tenantId: stri
 }
 
 export async function loadScenarioRecordsByTenant(tenantId: string) {
-  const [result, executionResult, bugResult, evidenceResult] = await Promise.all([
-    dbQuery<ScenarioRow>(
-      `SELECT card_id, scenario_id, scenario, updated_at
-       FROM scenario_records
-       WHERE tenant_id = $1
-       ORDER BY updated_at DESC, scenario_id DESC`,
-      [tenantId],
-    ),
-    dbQuery<ScenarioExecutionRow>(
-      `SELECT card_id, scenario_id, execution
-       FROM scenario_execution_records
-       WHERE tenant_id = $1`,
-      [tenantId],
-    ),
-    dbQuery<ScenarioBugRow>(
-      `SELECT scenario_id, bug_source, bug_title, bug_description
-       FROM scenario_bug_records
-       WHERE tenant_id = $1`,
-      [tenantId],
-    ),
-    dbQuery<ScenarioEvidenceRow>(
-      `SELECT scenario_id, evidence_index, evidence_value
-       FROM scenario_evidence_records
-       WHERE tenant_id = $1
-       ORDER BY scenario_id, evidence_index`,
-      [tenantId],
-    ),
-  ]);
+  let result;
+  let executionResult;
+  let bugResult;
+  let evidenceResult;
+
+  try {
+    [result, executionResult, bugResult, evidenceResult] = await Promise.all([
+      dbQuery<ScenarioRow>(
+        `SELECT card_id, scenario_id, scenario, updated_at
+         FROM scenario_records
+         WHERE tenant_id = $1
+         ORDER BY updated_at DESC, scenario_id DESC`,
+        [tenantId],
+      ),
+      dbQuery<ScenarioExecutionRow>(
+        `SELECT card_id, scenario_id, execution
+         FROM scenario_execution_records
+         WHERE tenant_id = $1`,
+        [tenantId],
+      ),
+      dbQuery<ScenarioBugRow>(
+        `SELECT scenario_id, bug_source, bug_title, bug_description
+         FROM scenario_bug_records
+         WHERE tenant_id = $1`,
+        [tenantId],
+      ),
+      dbQuery<ScenarioEvidenceRow>(
+        `SELECT scenario_id, evidence_index, evidence_value
+         FROM scenario_evidence_records
+         WHERE tenant_id = $1
+         ORDER BY scenario_id, evidence_index`,
+        [tenantId],
+      ),
+    ]);
+  } catch (error) {
+    if (isMissingScenarioArtifactsRelation(error)) {
+      logScenarioArtifactsFallback('load', error, { tenantId });
+      return new Map<string, Scenario[]>();
+    }
+    throw error;
+  }
 
   const executionByScenario = new Map(
     executionResult.rows.map((row) => [row.scenario_id, { ...defaultExecution(row.execution?.estimatedMinutes || 10), ...row.execution }]),
@@ -331,9 +371,17 @@ export async function loadScenarioRecordsByTenant(tenantId: string) {
 }
 
 export async function syncScenarioRecordsForCard(tenantId: string, cardId: string, scenarios: Scenario[]) {
-  await dbTransaction(async (client) => {
-    await upsertScenarioRecordsForCardClient(client, tenantId, cardId, scenarios);
-  });
+  try {
+    await dbTransaction(async (client) => {
+      await upsertScenarioRecordsForCardClient(client, tenantId, cardId, scenarios);
+    });
+  } catch (error) {
+    if (isMissingScenarioArtifactsRelation(error)) {
+      logScenarioArtifactsFallback('sync', error, { tenantId, cardId });
+      return;
+    }
+    throw error;
+  }
 }
 
 export async function deleteRemovedScenarios(tenantId: string, beforeScenarios: Scenario[], afterScenarios: Scenario[]) {
@@ -346,40 +394,57 @@ export async function deleteRemovedScenarios(tenantId: string, beforeScenarios: 
 }
 
 export async function deleteAllScenarioRecordsForCard(tenantId: string, cardId: string) {
-  const existing = await dbQuery<{ scenario: Scenario }>(
-    'SELECT scenario FROM scenario_records WHERE tenant_id = $1 AND card_id = $2',
-    [tenantId, cardId],
-  );
+  try {
+    const existing = await dbQuery<{ scenario: Scenario }>(
+      'SELECT scenario FROM scenario_records WHERE tenant_id = $1 AND card_id = $2',
+      [tenantId, cardId],
+    );
 
-  await dbQuery('DELETE FROM scenario_execution_records WHERE tenant_id = $1 AND card_id = $2', [tenantId, cardId]);
-  await dbQuery(
-    `DELETE FROM scenario_bug_records
-     WHERE tenant_id = $1
-       AND scenario_id IN (
-         SELECT scenario_id FROM scenario_records WHERE tenant_id = $1 AND card_id = $2
-       )`,
-    [tenantId, cardId],
-  );
-  await dbQuery(
-    `DELETE FROM scenario_evidence_records
-     WHERE tenant_id = $1
-       AND scenario_id IN (
-         SELECT scenario_id FROM scenario_records WHERE tenant_id = $1 AND card_id = $2
-       )`,
-    [tenantId, cardId],
-  );
-  await dbQuery('DELETE FROM scenario_records WHERE tenant_id = $1 AND card_id = $2', [tenantId, cardId]);
+    await dbQuery('DELETE FROM scenario_execution_records WHERE tenant_id = $1 AND card_id = $2', [tenantId, cardId]);
+    await dbQuery(
+      `DELETE FROM scenario_bug_records
+       WHERE tenant_id = $1
+         AND scenario_id IN (
+           SELECT scenario_id FROM scenario_records WHERE tenant_id = $1 AND card_id = $2
+         )`,
+      [tenantId, cardId],
+    );
+    await dbQuery(
+      `DELETE FROM scenario_evidence_records
+       WHERE tenant_id = $1
+         AND scenario_id IN (
+           SELECT scenario_id FROM scenario_records WHERE tenant_id = $1 AND card_id = $2
+         )`,
+      [tenantId, cardId],
+    );
+    await dbQuery('DELETE FROM scenario_records WHERE tenant_id = $1 AND card_id = $2', [tenantId, cardId]);
 
-  for (const row of existing.rows) {
-    await deleteScenarioFromGitHub(tenantId, normalizeScenario(row.scenario));
+    for (const row of existing.rows) {
+      await deleteScenarioFromGitHub(tenantId, normalizeScenario(row.scenario));
+    }
+  } catch (error) {
+    if (isMissingScenarioArtifactsRelation(error)) {
+      logScenarioArtifactsFallback('delete_all', error, { tenantId, cardId });
+      return;
+    }
+    throw error;
   }
 }
 
 export async function backfillScenarioRecordsForCard(tenantId: string, cardId: string, scenarios: Scenario[]) {
-  const countResult = await dbQuery<{ count: string }>(
-    'SELECT COUNT(*)::text AS count FROM scenario_records WHERE tenant_id = $1 AND card_id = $2',
-    [tenantId, cardId],
-  );
+  let countResult;
+  try {
+    countResult = await dbQuery<{ count: string }>(
+      'SELECT COUNT(*)::text AS count FROM scenario_records WHERE tenant_id = $1 AND card_id = $2',
+      [tenantId, cardId],
+    );
+  } catch (error) {
+    if (isMissingScenarioArtifactsRelation(error)) {
+      logScenarioArtifactsFallback('backfill', error, { tenantId, cardId });
+      return;
+    }
+    throw error;
+  }
 
   if (Number(countResult.rows[0]?.count || 0) > 0) {
     return;
