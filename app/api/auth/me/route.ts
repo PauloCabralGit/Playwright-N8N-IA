@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dbQuery } from '@/app/lib/postgres';
-import { deleteSession, SESSION_COOKIE_NAME, SESSION_IDLE_TIMEOUT_SECONDS } from '@/app/lib/tenant-auth';
+import { deleteSession, ensureTenantProfileByIdPublic, SESSION_COOKIE_NAME, SESSION_IDLE_TIMEOUT_SECONDS } from '@/app/lib/tenant-auth';
 
 const SESSION_IDLE_TIMEOUT_MS = SESSION_IDLE_TIMEOUT_SECONDS * 1000;
 
@@ -78,7 +78,36 @@ export async function GET(request: NextRequest) {
 
   await dbQuery(`UPDATE sessions SET last_seen_at = $2 WHERE token = $1`, [token, new Date().toISOString()]);
 
-  const tenantExists = Boolean(row.tenant_id);
+  const hydratedTenant = row.tenant_id
+    ? {
+        id: String(row.tenant_id || ''),
+        slug: String(row.tenant_slug || ''),
+        companyName: String(row.tenant_company_name || ''),
+        cnpj: String(row.tenant_cnpj || ''),
+        address: String(row.tenant_address || ''),
+        appPublicUrl: String(row.tenant_app_public_url || ''),
+        webhookBaseUrl: String(row.tenant_webhook_base_url || ''),
+        webhookPath: String(row.tenant_webhook_path || ''),
+        webhookUrl: String(row.tenant_webhook_url || ''),
+        apiKey: String(row.tenant_api_key || ''),
+        discordWebhook: String(row.tenant_discord_webhook || ''),
+        discordApplicationId: String(row.tenant_discord_application_id || ''),
+        discordPublicKey: String(row.tenant_discord_public_key || ''),
+        discordBotToken: String(row.tenant_discord_bot_token || ''),
+        discordGuildId: String(row.tenant_discord_guild_id || ''),
+        discordCommandName: String(row.tenant_discord_command_name || 'qa'),
+        githubOwner: String(row.tenant_github_owner || ''),
+        githubRepo: String(row.tenant_github_repo || ''),
+        githubBranch: String(row.tenant_github_branch || 'main'),
+        githubToken: String(row.tenant_github_token || ''),
+        workflowDownloadUrl: String(row.tenant_workflow_download_url || ''),
+        workflowPublishedAt: String(row.tenant_workflow_published_at || ''),
+        loadedAt: String(row.tenant_loaded_at || ''),
+        updatedAt: String(row.tenant_updated_at || ''),
+      }
+    : await ensureTenantProfileByIdPublic(String(row.account_tenant_id || ''));
+
+  const tenantExists = Boolean(hydratedTenant?.id);
 
   const response = NextResponse.json({
     ok: true,
@@ -92,34 +121,7 @@ export async function GET(request: NextRequest) {
       address: String(row.account_address || ''),
       tenantId: String(row.account_tenant_id || ''),
     },
-    tenant: tenantExists
-      ? {
-          id: String(row.tenant_id || ''),
-          slug: String(row.tenant_slug || ''),
-          companyName: String(row.tenant_company_name || ''),
-          cnpj: String(row.tenant_cnpj || ''),
-          address: String(row.tenant_address || ''),
-          appPublicUrl: String(row.tenant_app_public_url || ''),
-          webhookBaseUrl: String(row.tenant_webhook_base_url || ''),
-          webhookPath: String(row.tenant_webhook_path || ''),
-          webhookUrl: String(row.tenant_webhook_url || ''),
-          apiKey: String(row.tenant_api_key || ''),
-          discordWebhook: String(row.tenant_discord_webhook || ''),
-          discordApplicationId: String(row.tenant_discord_application_id || ''),
-          discordPublicKey: String(row.tenant_discord_public_key || ''),
-          discordBotToken: String(row.tenant_discord_bot_token || ''),
-          discordGuildId: String(row.tenant_discord_guild_id || ''),
-          discordCommandName: String(row.tenant_discord_command_name || 'qa'),
-          githubOwner: String(row.tenant_github_owner || ''),
-          githubRepo: String(row.tenant_github_repo || ''),
-          githubBranch: String(row.tenant_github_branch || 'main'),
-          githubToken: String(row.tenant_github_token || ''),
-          workflowDownloadUrl: String(row.tenant_workflow_download_url || ''),
-          workflowPublishedAt: String(row.tenant_workflow_published_at || ''),
-          loadedAt: String(row.tenant_loaded_at || ''),
-          updatedAt: String(row.tenant_updated_at || ''),
-        }
-      : null,
+    tenant: tenantExists ? hydratedTenant : null,
   });
 
   response.cookies.set(SESSION_COOKIE_NAME, token, {

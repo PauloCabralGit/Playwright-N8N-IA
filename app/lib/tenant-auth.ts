@@ -321,7 +321,7 @@ export async function getCurrentAccount(request?: NextRequest) {
 export async function getCurrentTenant(request?: NextRequest) {
   const account = await getCurrentAccount(request);
   if (!account) return null;
-  return getTenantByIdPublic(account.tenantId);
+  return ensureTenantProfileByIdPublic(account.tenantId);
 }
 
 export async function getTenantBySlug(slug: string) {
@@ -346,6 +346,63 @@ export async function getAccountByTenantIdPublic(tenantId: string) {
     [tenantId],
   );
   return mapAccount(result.rows[0]);
+}
+
+function buildTenantProfileFromAccount(account: TenantAccount, tenantSlug: string): TenantProfile {
+  const webhookBaseUrl = resolveWebhookBaseUrlFromValue(process.env.N8N_WEBHOOK_URL || '');
+  const now = new Date().toISOString();
+
+  return {
+    id: account.tenantId,
+    slug: tenantSlug,
+    companyName: account.companyName,
+    cnpj: account.cnpj,
+    address: account.address,
+    appPublicUrl: safeTrim(process.env.APP_PUBLIC_URL),
+    webhookBaseUrl,
+    webhookPath: resolveTenantWebhookPath('', tenantSlug),
+    webhookUrl: webhookBaseUrl ? buildTenantWebhookUrl(webhookBaseUrl) : safeTrim(process.env.N8N_WEBHOOK_URL),
+    apiKey: safeTrim(process.env.N8N_API_KEY),
+    discordWebhook: safeTrim(process.env.DISCORD_WEBHOOK),
+    discordApplicationId: safeTrim(process.env.DISCORD_APPLICATION_ID),
+    discordPublicKey: safeTrim(process.env.DISCORD_PUBLIC_KEY),
+    discordBotToken: safeTrim(process.env.DISCORD_BOT_TOKEN),
+    discordGuildId: safeTrim(process.env.DISCORD_GUILD_ID),
+    discordCommandName: normalizeDiscordCommandName(process.env.DISCORD_COMMAND_NAME || 'qa'),
+    githubOwner: safeTrim(process.env.GITHUB_OWNER),
+    githubRepo: safeTrim(process.env.GITHUB_REPO),
+    githubBranch: safeTrim(process.env.GITHUB_BRANCH) || 'main',
+    githubToken: safeTrim(process.env.GITHUB_TOKEN),
+    workflowJson: undefined,
+    workflowPublishedAt: '',
+    workflowDownloadUrl: '',
+    loadedAt: now,
+    updatedAt: now,
+    createdAt: now,
+  };
+}
+
+export async function ensureTenantProfileByIdPublic(tenantId: string) {
+  const normalizedTenantId = safeTrim(tenantId);
+  if (!normalizedTenantId) return null;
+
+  const existing = await getTenantByIdPublic(normalizedTenantId);
+  if (existing) return existing;
+
+  const account = await getAccountByTenantIdPublic(normalizedTenantId);
+  if (!account) return null;
+
+  const tenantSlug = await generateUniqueTenantSlug(account.companyName || account.email || normalizedTenantId);
+  const provisionedTenant = buildTenantProfileFromAccount(account, tenantSlug);
+  await upsertTenantProfile(provisionedTenant);
+
+  console.warn('Tenant profile was missing and has been re-created from account data.', {
+    tenantId: normalizedTenantId,
+    accountId: account.id,
+    slug: tenantSlug,
+  });
+
+  return getTenantByIdPublic(normalizedTenantId);
 }
 
 export async function getTenantByDiscordApplicationIdPublic(applicationId: string) {
@@ -431,7 +488,7 @@ export async function getTenantSettings(request?: NextRequest, tenantId?: string
   const account = await getCurrentAccount(request);
   const resolvedTenantId = tenantId || account?.tenantId;
   if (!resolvedTenantId) return null;
-  return getTenantByIdPublic(resolvedTenantId);
+  return ensureTenantProfileByIdPublic(resolvedTenantId);
 }
 
 export async function createAccountAndTenant(input: SignupInput) {
@@ -655,7 +712,7 @@ export async function updateTenantForRequest(request: NextRequest | undefined, p
     throw new Error('Usuário não autenticado.');
   }
 
-  const current = await getTenantByIdPublic(account.tenantId);
+  const current = await ensureTenantProfileByIdPublic(account.tenantId);
   if (!current) {
     throw new Error('Tenant não encontrado.');
   }
