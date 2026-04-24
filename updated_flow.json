@@ -31,7 +31,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\nconst config = $json || {};\n\nconst pickWebhook = () => {\n  const candidates = [\n    'Webhook Discord',\n    'Webhook',\n    'Webhook Next Status',\n    'Webhook Next Created',\n  ];\n\n  for (const name of candidates) {\n    try {\n      const value = $(name).first().json;\n      if (value && Object.keys(value).length > 0) return value;\n    } catch (e) {}\n  }\n\n  return {};\n};\n\nconst root = pickWebhook();\nconst body = root.body || {};\nconst options = body.options || {};\nconst scenario = root.scenario || body.scenario || {};\nconst card = root.card || body.card || {};\nconst acceptanceCriteria = Array.isArray(body.acceptanceCriteria)\n  ? body.acceptanceCriteria\n  : Array.isArray(card.acceptanceCriteria)\n    ? card.acceptanceCriteria\n    : [];\nconst scenarios = Array.isArray(body.scenarios)\n  ? body.scenarios\n  : Array.isArray(card.scenarios)\n    ? card.scenarios\n    : [];\nconst actionFromApi = root.action || body.action || body.command || root.command || '';\n\nconst inferredAction =\n  actionFromApi ||\n  (Array.isArray(body.scenarios) && body.scenarios.length ? 'create' : '') ||\n  (body.scenario ? 'create' : '') ||\n  (root.source === 'IA' && (body.id || root.id || scenario.id || card.title) ? 'create' : '') ||\n  'unknown';\n\nconst command = body.command || root.command || inferredAction || 'unknown';\n\nconst map = {\n  qa_buscar: 'buscar',\n  qa_ver: 'ver',\n  qa_add: 'adicionar',\n  qa_editar: 'editar',\n  qa_status: 'status',\n  qa_del: 'deletar',\n  qa_ia: 'ia',\n  pingqa: 'pingqa',\n  n8n_connection_test: 'pingqa',\n  create: 'adicionar',\n  move: 'status',\n  update: 'status',\n  create_scenario: 'adicionar',\n  scenario_created: 'adicionar',\n  update_status: 'status',\n};\n\nconst appId = root.application_id || body.application_id || body.body?.application_id || '';\nconst interactionToken = root.interaction_token || body.interaction_token || body.token || body.body?.token || '';\nconst interactionId = root.interaction_id || body.interaction_id || body.id || body.body?.id || '';\nconst discordSignals = Boolean(\n  root.source === 'discord' ||\n  body.source === 'discord' ||\n  root.application_id ||\n  body.application_id ||\n  body.body?.application_id ||\n  root.interaction_token ||\n  body.interaction_token ||\n  body.token ||\n  body.body?.token ||\n  root.guild_id ||\n  body.guild_id ||\n  body.body?.guild_id ||\n  root.channel_id ||\n  body.channel_id ||\n  body.body?.channel_id ||\n  body.type === 2 ||\n  body.type === 3 ||\n  root.type === 2 ||\n  root.type === 3 ||\n  body.interaction?.id ||\n  body.member ||\n  body.user?.id\n);\nconst incomingSource = String(root.source || body.source || (discordSignals ? 'discord' : 'site')).trim().toLowerCase() || 'site';\nconst userValue = scenario.owner || body.user || root.user || 'api';\n\nconst inferredGroup =\n  String(options.grupo || body.group || root.group || (\n    (options.id || scenario.id || card.title || '').toUpperCase().startsWith('CT-PERF')\n      ? 'Performance'\n      : 'Funcional'\n  )).trim() || 'Funcional';\n\nreturn [{\n  json: {\n    ...root,\n    card,\n    acceptanceCriteria,\n    scenarios,\n    config,\n    action: map[command] || 'unknown',\n    source: incomingSource,\n    origin: incomingSource,\n    text: options.texto || options.pergunta || root.text || card.businessGoal || '',\n    id: options.id || scenario.id || root.id || body.id || card.id || '',\n    status: options.status || root.status || body.status || scenario.status || card.status || '',\n    field: options.campo || root.field || '',\n    value: options.valor || root.value || '',\n    grupo: inferredGroup,\n    categoria: scenario.category || root.categoria || body.category || card.source || '',\n    modulo: scenario.module || root.modulo || body.module || card.module || '',\n    titulo: scenario.title || root.titulo || body.title || card.title || '',\n    objetivo: scenario.objective || root.objetivo || body.businessGoal || card.businessGoal || '',\n    precondicao: scenario.preconditions || root.precondicao || body.precondicao || card.qaNotes || '',\n    passos: scenario.steps || root.passos || body.passos || '',\n    resultado: scenario.expectedResult || root.resultado || body.resultado || acceptanceCriteria.join('\\n') || '',\n    tags: Array.isArray(scenario.tags) ? scenario.tags.join(', ') : (scenario.tags || root.tags || body.tags || card.source || ''),\n    prioridade: scenario.priority || root.prioridade || body.priority || card.priority || '',\n    user: userValue,\n    application_id: appId,\n    interaction_token: interactionToken,\n    interaction_id: interactionId,\n    responseTarget: incomingSource === 'discord' ? 'discord' : 'api',\n  }\n}];\n"
+        "jsCode": "\nconst config = $json || {};\n\nconst pickWebhook = () => {\n  const candidates = [\n    'Webhook Discord',\n    'Webhook',\n    'Webhook Next Status',\n    'Webhook Next Created',\n  ];\n\n  for (const name of candidates) {\n    try {\n      const value = $(name).first().json;\n      if (value && Object.keys(value).length > 0) return value;\n    } catch (e) {}\n  }\n\n  return {};\n};\n\nconst root = pickWebhook();\nconst body = root.body || {};\nconst options = body.options || {};\nconst scenario = root.scenario || body.scenario || {};\nconst card = root.card || body.card || {};\nconst acceptanceCriteria = Array.isArray(body.acceptanceCriteria)\n  ? body.acceptanceCriteria\n  : Array.isArray(card.acceptanceCriteria)\n    ? card.acceptanceCriteria\n    : [];\nconst scenarios = Array.isArray(body.scenarios)\n  ? body.scenarios\n  : Array.isArray(card.scenarios)\n    ? card.scenarios\n    : [];\nconst actionFromApi = String(root.action || body.action || body.command || root.command || '').trim().toLowerCase();\n\nconst inferredAction =\n  actionFromApi ||\n  (Array.isArray(body.scenarios) && body.scenarios.length ? 'create' : '') ||\n  (body.scenario ? 'create' : '') ||\n  (root.source === 'IA' && (body.id || root.id || scenario.id || card.title) ? 'create' : '') ||\n  'unknown';\n\nconst command = String(body.command || root.command || inferredAction || 'unknown').trim().toLowerCase();\n\nconst map = {\n  buscar: 'buscar',\n  ver: 'ver',\n  adicionar: 'adicionar',\n  editar: 'editar',\n  status: 'status',\n  deletar: 'deletar',\n  ia: 'ia',\n  add: 'adicionar',\n  del: 'deletar',\n  qa_buscar: 'buscar',\n  qa_ver: 'ver',\n  qa_add: 'adicionar',\n  qa_editar: 'editar',\n  qa_status: 'status',\n  qa_del: 'deletar',\n  qa_ia: 'ia',\n  task_ia: 'task_ia',\n  pingqa: 'pingqa',\n  n8n_connection_test: 'pingqa',\n  create: 'adicionar',\n  move: 'status',\n  update: 'status',\n  create_scenario: 'adicionar',\n  scenario_created: 'adicionar',\n  update_status: 'status',\n};\n\nconst appId = root.application_id || body.application_id || body.body?.application_id || '';\nconst interactionToken = root.interaction_token || body.interaction_token || body.token || body.body?.token || '';\nconst interactionId = root.interaction_id || body.interaction_id || body.id || body.body?.id || '';\nconst discordSignals = Boolean(\n  root.source === 'discord' ||\n  body.source === 'discord' ||\n  root.application_id ||\n  body.application_id ||\n  body.body?.application_id ||\n  root.interaction_token ||\n  body.interaction_token ||\n  body.token ||\n  body.body?.token ||\n  root.guild_id ||\n  body.guild_id ||\n  body.body?.guild_id ||\n  root.channel_id ||\n  body.channel_id ||\n  body.body?.channel_id ||\n  body.type === 2 ||\n  body.type === 3 ||\n  root.type === 2 ||\n  root.type === 3 ||\n  body.interaction?.id ||\n  body.member ||\n  body.user?.id\n);\nconst incomingSource = String(root.source || body.source || (discordSignals ? 'discord' : 'site')).trim().toLowerCase() || 'site';\nconst userValue = scenario.owner || body.user || root.user || 'api';\n\nconst inferredGroup =\n  String(options.grupo || body.group || root.group || (\n    (options.id || scenario.id || card.title || '').toUpperCase().startsWith('CT-PERF')\n      ? 'Performance'\n      : 'Funcional'\n  )).trim() || 'Funcional';\n\nreturn [{\n  json: {\n    ...root,\n    card,\n    acceptanceCriteria,\n    scenarios,\n    config,\n    action: map[command] || 'unknown',\n    source: incomingSource,\n    origin: incomingSource,\n    text: options.texto || options.pergunta || root.text || card.businessGoal || '',\n    id: options.id || scenario.id || root.id || body.id || card.id || '',\n    status: options.status || root.status || body.status || scenario.status || card.status || '',\n    field: options.campo || root.field || '',\n    value: options.valor || root.value || '',\n    grupo: inferredGroup,\n    categoria: scenario.category || root.categoria || body.category || card.source || '',\n    modulo: scenario.module || root.modulo || body.module || card.module || '',\n    titulo: scenario.title || root.titulo || body.title || card.title || '',\n    objetivo: scenario.objective || root.objetivo || body.businessGoal || card.businessGoal || '',\n    precondicao: scenario.preconditions || root.precondicao || body.precondicao || card.qaNotes || '',\n    passos: scenario.steps || root.passos || body.passos || '',\n    resultado: scenario.expectedResult || root.resultado || body.resultado || acceptanceCriteria.join('\\n') || '',\n    tags: Array.isArray(scenario.tags) ? scenario.tags.join(', ') : (scenario.tags || root.tags || body.tags || card.source || ''),\n    prioridade: scenario.priority || root.prioridade || body.priority || card.priority || '',\n    user: userValue,\n    application_id: appId,\n    interaction_token: interactionToken,\n    interaction_id: interactionId,\n    responseTarget: incomingSource === 'discord' ? 'discord' : 'api',\n  }\n}];\n"
       },
       "id": "a8cab905-d524-43a5-8b2e-a53f6c7bf41f",
       "name": "Normalizar Payload",
@@ -250,7 +250,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\nconst config = $json.config || {};\nconst baseUrl = String(config.appPublicUrl || config.APP_PUBLIC_URL || '').trim().replace(/\\/+$/, '');\nconst tenantId = String(config.tenantId || $json.tenantId || $json.tenantSlug || '').trim();\n\nif (!baseUrl) {\n  throw new Error('URL publica do app nao encontrada na configuracao.');\n}\n\nconst response = await fetch(\n  baseUrl + '/api/n8n/board/cards?tenantId=' + encodeURIComponent(tenantId),\n  {\n    headers: { 'content-type': 'application/json' },\n    cache: 'no-store',\n  }\n);\n\nconst data = await response.json().catch(() => ({}));\nif (!response.ok || !data?.ok) {\n  throw new Error(data?.error || 'Falha ao carregar cenarios do banco (' + response.status + ').');\n}\n\nconst cards = Array.isArray(data.items) ? data.items : [];\n\nfunction toRow(card) {\n  const acceptanceCriteria = Array.isArray(card.acceptanceCriteria) ? card.acceptanceCriteria : [];\n  const scenarios = Array.isArray(card.scenarios) ? card.scenarios : [];\n  const isPerformance =\n    card.column === 'testing' ||\n    /perf/i.test(String(card.id || '')) ||\n    /performance/i.test(String(card.module || '')) ||\n    /performance/i.test(String(card.title || ''));\n\n  const group = isPerformance ? 'Performance' : 'Funcional';\n\n  return {\n    _group: group,\n    grupo: group,\n    ID: card.id || '',\n    Categoria: group,\n    'Módulo': card.module || card.epic || 'Geral',\n    'Título': card.title || card.id || '',\n    Objetivo: card.businessGoal || '',\n    'Pré-condição / Cenário': card.qaNotes || '',\n    Passos: acceptanceCriteria.join('\\n'),\n    'Resultado Esperado': acceptanceCriteria.join('\\n'),\n    Status: card.column || 'Backlog',\n    Tags: scenarios.map((scenario) => scenario.id).filter(Boolean).join(', '),\n    card,\n    scenarios,\n  };\n}\n\nreturn cards.map((card) => ({ json: toRow(card) }));\n"
+        "jsCode": "\nconst payload = $json.body && typeof $json.body === 'object' ? $json.body : $json;\n\nif (payload?.ok === false) {\n  throw new Error(payload.error || 'Falha ao carregar cenarios do banco.');\n}\n\nconst cards = Array.isArray(payload?.items) ? payload.items : [];\n\nfunction toRow(card) {\n  const acceptanceCriteria = Array.isArray(card.acceptanceCriteria) ? card.acceptanceCriteria : [];\n  const scenarios = Array.isArray(card.scenarios) ? card.scenarios : [];\n  const isPerformance =\n    card.column === 'testing' ||\n    /perf/i.test(String(card.id || '')) ||\n    /performance/i.test(String(card.module || '')) ||\n    /performance/i.test(String(card.title || ''));\n\n  const group = isPerformance ? 'Performance' : 'Funcional';\n\n  return {\n    _group: group,\n    grupo: group,\n    ID: card.id || '',\n    Categoria: group,\n    'M?dulo': card.module || card.epic || 'Geral',\n    'T?tulo': card.title || card.id || '',\n    Objetivo: card.businessGoal || '',\n    'Pr?-condi??o / Cen?rio': card.qaNotes || '',\n    Passos: acceptanceCriteria.join('\\n'),\n    'Resultado Esperado': acceptanceCriteria.join('\\n'),\n    Status: card.column || 'Backlog',\n    Tags: scenarios.map((scenario) => scenario.id).filter(Boolean).join(', '),\n    card,\n    scenarios,\n  };\n}\n\nreturn cards.map((card) => ({ json: toRow(card) }));\n"
       },
       "id": "186111a9-10c8-4ba1-a716-32b69ad4f4d8",
       "name": "DB Ler Cenários",
@@ -334,7 +334,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\nconst config = $json.config || {};\nconst baseUrl = String(config.appPublicUrl || config.APP_PUBLIC_URL || '').trim().replace(/\\/+$/, '');\nconst tenantId = String(config.tenantId || $json.tenantId || $json.tenantSlug || '').trim();\n\nif (!baseUrl) {\n  throw new Error('URL publica do app nao encontrada na configuracao.');\n}\n\nconst response = await fetch(\n  baseUrl + '/api/n8n/board/cards?tenantId=' + encodeURIComponent(tenantId),\n  {\n    headers: { 'content-type': 'application/json' },\n    cache: 'no-store',\n  }\n);\n\nconst data = await response.json().catch(() => ({}));\nif (!response.ok || !data?.ok) {\n  throw new Error(data?.error || 'Falha ao carregar cenarios do banco (' + response.status + ').');\n}\n\nconst cards = Array.isArray(data.items) ? data.items : [];\n\nfunction toRow(card) {\n  const acceptanceCriteria = Array.isArray(card.acceptanceCriteria) ? card.acceptanceCriteria : [];\n  const scenarios = Array.isArray(card.scenarios) ? card.scenarios : [];\n  const isPerformance =\n    card.column === 'testing' ||\n    /perf/i.test(String(card.id || '')) ||\n    /performance/i.test(String(card.module || '')) ||\n    /performance/i.test(String(card.title || ''));\n\n  const group = isPerformance ? 'Performance' : 'Funcional';\n\n  return {\n    _group: group,\n    grupo: group,\n    ID: card.id || '',\n    Categoria: group,\n    'Módulo': card.module || card.epic || 'Geral',\n    'Título': card.title || card.id || '',\n    Objetivo: card.businessGoal || '',\n    'Pré-condição / Cenário': card.qaNotes || '',\n    Passos: acceptanceCriteria.join('\\n'),\n    'Resultado Esperado': acceptanceCriteria.join('\\n'),\n    Status: card.column || 'Backlog',\n    Tags: scenarios.map((scenario) => scenario.id).filter(Boolean).join(', '),\n    card,\n    scenarios,\n  };\n}\n\nreturn cards.map((card) => ({ json: toRow(card) }));\n"
+        "jsCode": "\nconst payload = $json.body && typeof $json.body === 'object' ? $json.body : $json;\n\nif (payload?.ok === false) {\n  throw new Error(payload.error || 'Falha ao carregar cenarios do banco.');\n}\n\nconst cards = Array.isArray(payload?.items) ? payload.items : [];\n\nfunction toRow(card) {\n  const acceptanceCriteria = Array.isArray(card.acceptanceCriteria) ? card.acceptanceCriteria : [];\n  const scenarios = Array.isArray(card.scenarios) ? card.scenarios : [];\n  const isPerformance =\n    card.column === 'testing' ||\n    /perf/i.test(String(card.id || '')) ||\n    /performance/i.test(String(card.module || '')) ||\n    /performance/i.test(String(card.title || ''));\n\n  const group = isPerformance ? 'Performance' : 'Funcional';\n\n  return {\n    _group: group,\n    grupo: group,\n    ID: card.id || '',\n    Categoria: group,\n    'M?dulo': card.module || card.epic || 'Geral',\n    'T?tulo': card.title || card.id || '',\n    Objetivo: card.businessGoal || '',\n    'Pr?-condi??o / Cen?rio': card.qaNotes || '',\n    Passos: acceptanceCriteria.join('\\n'),\n    'Resultado Esperado': acceptanceCriteria.join('\\n'),\n    Status: card.column || 'Backlog',\n    Tags: scenarios.map((scenario) => scenario.id).filter(Boolean).join(', '),\n    card,\n    scenarios,\n  };\n}\n\nreturn cards.map((card) => ({ json: toRow(card) }));\n"
       },
       "id": "a46ce9f4-0e7b-4fc0-bd84-e46bb1ede9eb",
       "name": "DB Ler para Status",
@@ -405,7 +405,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\nconst config = $json.config || {};\nconst baseUrl = String(config.appPublicUrl || config.APP_PUBLIC_URL || '').trim().replace(/\\/+$/, '');\nconst tenantId = String(config.tenantId || $json.tenantId || $json.tenantSlug || '').trim();\n\nif (!baseUrl) {\n  throw new Error('URL publica do app nao encontrada na configuracao.');\n}\n\nconst response = await fetch(\n  baseUrl + '/api/n8n/board/cards?tenantId=' + encodeURIComponent(tenantId),\n  {\n    headers: { 'content-type': 'application/json' },\n    cache: 'no-store',\n  }\n);\n\nconst data = await response.json().catch(() => ({}));\nif (!response.ok || !data?.ok) {\n  throw new Error(data?.error || 'Falha ao carregar cenarios do banco (' + response.status + ').');\n}\n\nconst cards = Array.isArray(data.items) ? data.items : [];\n\nfunction toRow(card) {\n  const acceptanceCriteria = Array.isArray(card.acceptanceCriteria) ? card.acceptanceCriteria : [];\n  const scenarios = Array.isArray(card.scenarios) ? card.scenarios : [];\n  const isPerformance =\n    card.column === 'testing' ||\n    /perf/i.test(String(card.id || '')) ||\n    /performance/i.test(String(card.module || '')) ||\n    /performance/i.test(String(card.title || ''));\n\n  const group = isPerformance ? 'Performance' : 'Funcional';\n\n  return {\n    _group: group,\n    grupo: group,\n    ID: card.id || '',\n    Categoria: group,\n    'Módulo': card.module || card.epic || 'Geral',\n    'Título': card.title || card.id || '',\n    Objetivo: card.businessGoal || '',\n    'Pré-condição / Cenário': card.qaNotes || '',\n    Passos: acceptanceCriteria.join('\\n'),\n    'Resultado Esperado': acceptanceCriteria.join('\\n'),\n    Status: card.column || 'Backlog',\n    Tags: scenarios.map((scenario) => scenario.id).filter(Boolean).join(', '),\n    card,\n    scenarios,\n  };\n}\n\nreturn cards.map((card) => ({ json: toRow(card) }));\n"
+        "jsCode": "\nconst payload = $json.body && typeof $json.body === 'object' ? $json.body : $json;\n\nif (payload?.ok === false) {\n  throw new Error(payload.error || 'Falha ao carregar cenarios do banco.');\n}\n\nconst cards = Array.isArray(payload?.items) ? payload.items : [];\n\nfunction toRow(card) {\n  const acceptanceCriteria = Array.isArray(card.acceptanceCriteria) ? card.acceptanceCriteria : [];\n  const scenarios = Array.isArray(card.scenarios) ? card.scenarios : [];\n  const isPerformance =\n    card.column === 'testing' ||\n    /perf/i.test(String(card.id || '')) ||\n    /performance/i.test(String(card.module || '')) ||\n    /performance/i.test(String(card.title || ''));\n\n  const group = isPerformance ? 'Performance' : 'Funcional';\n\n  return {\n    _group: group,\n    grupo: group,\n    ID: card.id || '',\n    Categoria: group,\n    'M?dulo': card.module || card.epic || 'Geral',\n    'T?tulo': card.title || card.id || '',\n    Objetivo: card.businessGoal || '',\n    'Pr?-condi??o / Cen?rio': card.qaNotes || '',\n    Passos: acceptanceCriteria.join('\\n'),\n    'Resultado Esperado': acceptanceCriteria.join('\\n'),\n    Status: card.column || 'Backlog',\n    Tags: scenarios.map((scenario) => scenario.id).filter(Boolean).join(', '),\n    card,\n    scenarios,\n  };\n}\n\nreturn cards.map((card) => ({ json: toRow(card) }));\n"
       },
       "id": "d7603ed2-ad05-4762-8bad-0a225f86e949",
       "name": "DB Ler para Editar",
@@ -646,7 +646,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\nconst config = $json.config || {};\nconst baseUrl = String(config.appPublicUrl || config.APP_PUBLIC_URL || '').trim().replace(/\\/+$/, '');\nconst tenantId = String(config.tenantId || $json.tenantId || $json.tenantSlug || '').trim();\n\nif (!baseUrl) {\n  throw new Error('URL publica do app nao encontrada na configuracao.');\n}\n\nconst response = await fetch(\n  baseUrl + '/api/n8n/board/cards?tenantId=' + encodeURIComponent(tenantId),\n  {\n    headers: { 'content-type': 'application/json' },\n    cache: 'no-store',\n  }\n);\n\nconst data = await response.json().catch(() => ({}));\nif (!response.ok || !data?.ok) {\n  throw new Error(data?.error || 'Falha ao carregar cenarios do banco (' + response.status + ').');\n}\n\nconst cards = Array.isArray(data.items) ? data.items : [];\n\nfunction toRow(card) {\n  const acceptanceCriteria = Array.isArray(card.acceptanceCriteria) ? card.acceptanceCriteria : [];\n  const scenarios = Array.isArray(card.scenarios) ? card.scenarios : [];\n  const isPerformance =\n    card.column === 'testing' ||\n    /perf/i.test(String(card.id || '')) ||\n    /performance/i.test(String(card.module || '')) ||\n    /performance/i.test(String(card.title || ''));\n\n  const group = isPerformance ? 'Performance' : 'Funcional';\n\n  return {\n    _group: group,\n    grupo: group,\n    ID: card.id || '',\n    Categoria: group,\n    'Módulo': card.module || card.epic || 'Geral',\n    'Título': card.title || card.id || '',\n    Objetivo: card.businessGoal || '',\n    'Pré-condição / Cenário': card.qaNotes || '',\n    Passos: acceptanceCriteria.join('\\n'),\n    'Resultado Esperado': acceptanceCriteria.join('\\n'),\n    Status: card.column || 'Backlog',\n    Tags: scenarios.map((scenario) => scenario.id).filter(Boolean).join(', '),\n    card,\n    scenarios,\n  };\n}\n\nreturn cards.map((card) => ({ json: toRow(card) }));\n"
+        "jsCode": "\nconst payload = $json.body && typeof $json.body === 'object' ? $json.body : $json;\n\nif (payload?.ok === false) {\n  throw new Error(payload.error || 'Falha ao carregar cenarios do banco.');\n}\n\nconst cards = Array.isArray(payload?.items) ? payload.items : [];\n\nfunction toRow(card) {\n  const acceptanceCriteria = Array.isArray(card.acceptanceCriteria) ? card.acceptanceCriteria : [];\n  const scenarios = Array.isArray(card.scenarios) ? card.scenarios : [];\n  const isPerformance =\n    card.column === 'testing' ||\n    /perf/i.test(String(card.id || '')) ||\n    /performance/i.test(String(card.module || '')) ||\n    /performance/i.test(String(card.title || ''));\n\n  const group = isPerformance ? 'Performance' : 'Funcional';\n\n  return {\n    _group: group,\n    grupo: group,\n    ID: card.id || '',\n    Categoria: group,\n    'M?dulo': card.module || card.epic || 'Geral',\n    'T?tulo': card.title || card.id || '',\n    Objetivo: card.businessGoal || '',\n    'Pr?-condi??o / Cen?rio': card.qaNotes || '',\n    Passos: acceptanceCriteria.join('\\n'),\n    'Resultado Esperado': acceptanceCriteria.join('\\n'),\n    Status: card.column || 'Backlog',\n    Tags: scenarios.map((scenario) => scenario.id).filter(Boolean).join(', '),\n    card,\n    scenarios,\n  };\n}\n\nreturn cards.map((card) => ({ json: toRow(card) }));\n"
       },
       "id": "8743ae85-c37f-4401-a8ce-ae442de1ccf5",
       "name": "DB Ler Funcionais IA",
@@ -659,7 +659,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\nconst config = $json.config || {};\nconst baseUrl = String(config.appPublicUrl || config.APP_PUBLIC_URL || '').trim().replace(/\\/+$/, '');\nconst tenantId = String(config.tenantId || $json.tenantId || $json.tenantSlug || '').trim();\n\nif (!baseUrl) {\n  throw new Error('URL publica do app nao encontrada na configuracao.');\n}\n\nconst response = await fetch(\n  baseUrl + '/api/n8n/board/cards?tenantId=' + encodeURIComponent(tenantId),\n  {\n    headers: { 'content-type': 'application/json' },\n    cache: 'no-store',\n  }\n);\n\nconst data = await response.json().catch(() => ({}));\nif (!response.ok || !data?.ok) {\n  throw new Error(data?.error || 'Falha ao carregar cenarios do banco (' + response.status + ').');\n}\n\nconst cards = Array.isArray(data.items) ? data.items : [];\n\nfunction toRow(card) {\n  const acceptanceCriteria = Array.isArray(card.acceptanceCriteria) ? card.acceptanceCriteria : [];\n  const scenarios = Array.isArray(card.scenarios) ? card.scenarios : [];\n  const isPerformance =\n    card.column === 'testing' ||\n    /perf/i.test(String(card.id || '')) ||\n    /performance/i.test(String(card.module || '')) ||\n    /performance/i.test(String(card.title || ''));\n\n  const group = isPerformance ? 'Performance' : 'Funcional';\n\n  return {\n    _group: group,\n    grupo: group,\n    ID: card.id || '',\n    Categoria: group,\n    'Módulo': card.module || card.epic || 'Geral',\n    'Título': card.title || card.id || '',\n    Objetivo: card.businessGoal || '',\n    'Pré-condição / Cenário': card.qaNotes || '',\n    Passos: acceptanceCriteria.join('\\n'),\n    'Resultado Esperado': acceptanceCriteria.join('\\n'),\n    Status: card.column || 'Backlog',\n    Tags: scenarios.map((scenario) => scenario.id).filter(Boolean).join(', '),\n    card,\n    scenarios,\n  };\n}\n\nreturn cards.map((card) => ({ json: toRow(card) }));\n"
+        "jsCode": "\nconst payload = $json.body && typeof $json.body === 'object' ? $json.body : $json;\n\nif (payload?.ok === false) {\n  throw new Error(payload.error || 'Falha ao carregar cenarios do banco.');\n}\n\nconst cards = Array.isArray(payload?.items) ? payload.items : [];\n\nfunction toRow(card) {\n  const acceptanceCriteria = Array.isArray(card.acceptanceCriteria) ? card.acceptanceCriteria : [];\n  const scenarios = Array.isArray(card.scenarios) ? card.scenarios : [];\n  const isPerformance =\n    card.column === 'testing' ||\n    /perf/i.test(String(card.id || '')) ||\n    /performance/i.test(String(card.module || '')) ||\n    /performance/i.test(String(card.title || ''));\n\n  const group = isPerformance ? 'Performance' : 'Funcional';\n\n  return {\n    _group: group,\n    grupo: group,\n    ID: card.id || '',\n    Categoria: group,\n    'M?dulo': card.module || card.epic || 'Geral',\n    'T?tulo': card.title || card.id || '',\n    Objetivo: card.businessGoal || '',\n    'Pr?-condi??o / Cen?rio': card.qaNotes || '',\n    Passos: acceptanceCriteria.join('\\n'),\n    'Resultado Esperado': acceptanceCriteria.join('\\n'),\n    Status: card.column || 'Backlog',\n    Tags: scenarios.map((scenario) => scenario.id).filter(Boolean).join(', '),\n    card,\n    scenarios,\n  };\n}\n\nreturn cards.map((card) => ({ json: toRow(card) }));\n"
       },
       "id": "c7fd9c7f-6216-4462-b3a6-5a62bf3bf158",
       "name": "DB Ler Performance IA",
@@ -709,7 +709,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\nconst config = $json.config || {};\nconst baseUrl = String(config.appPublicUrl || config.APP_PUBLIC_URL || '').trim().replace(/\\/+$/, '');\nconst tenantId = String(config.tenantId || $json.tenantId || $json.tenantSlug || '').trim();\n\nif (!baseUrl) {\n  throw new Error('URL publica do app nao encontrada na configuracao.');\n}\n\nconst response = await fetch(\n  baseUrl + '/api/n8n/board/cards?tenantId=' + encodeURIComponent(tenantId),\n  {\n    headers: { 'content-type': 'application/json' },\n    cache: 'no-store',\n  }\n);\n\nconst data = await response.json().catch(() => ({}));\nif (!response.ok || !data?.ok) {\n  throw new Error(data?.error || 'Falha ao carregar cenarios do banco (' + response.status + ').');\n}\n\nconst cards = Array.isArray(data.items) ? data.items : [];\n\nfunction toRow(card) {\n  const acceptanceCriteria = Array.isArray(card.acceptanceCriteria) ? card.acceptanceCriteria : [];\n  const scenarios = Array.isArray(card.scenarios) ? card.scenarios : [];\n  const isPerformance =\n    card.column === 'testing' ||\n    /perf/i.test(String(card.id || '')) ||\n    /performance/i.test(String(card.module || '')) ||\n    /performance/i.test(String(card.title || ''));\n\n  const group = isPerformance ? 'Performance' : 'Funcional';\n\n  return {\n    _group: group,\n    grupo: group,\n    ID: card.id || '',\n    Categoria: group,\n    'Módulo': card.module || card.epic || 'Geral',\n    'Título': card.title || card.id || '',\n    Objetivo: card.businessGoal || '',\n    'Pré-condição / Cenário': card.qaNotes || '',\n    Passos: acceptanceCriteria.join('\\n'),\n    'Resultado Esperado': acceptanceCriteria.join('\\n'),\n    Status: card.column || 'Backlog',\n    Tags: scenarios.map((scenario) => scenario.id).filter(Boolean).join(', '),\n    card,\n    scenarios,\n  };\n}\n\nreturn cards.map((card) => ({ json: toRow(card) }));\n"
+        "jsCode": "\nconst payload = $json.body && typeof $json.body === 'object' ? $json.body : $json;\n\nif (payload?.ok === false) {\n  throw new Error(payload.error || 'Falha ao carregar cenarios do banco.');\n}\n\nconst cards = Array.isArray(payload?.items) ? payload.items : [];\n\nfunction toRow(card) {\n  const acceptanceCriteria = Array.isArray(card.acceptanceCriteria) ? card.acceptanceCriteria : [];\n  const scenarios = Array.isArray(card.scenarios) ? card.scenarios : [];\n  const isPerformance =\n    card.column === 'testing' ||\n    /perf/i.test(String(card.id || '')) ||\n    /performance/i.test(String(card.module || '')) ||\n    /performance/i.test(String(card.title || ''));\n\n  const group = isPerformance ? 'Performance' : 'Funcional';\n\n  return {\n    _group: group,\n    grupo: group,\n    ID: card.id || '',\n    Categoria: group,\n    'M?dulo': card.module || card.epic || 'Geral',\n    'T?tulo': card.title || card.id || '',\n    Objetivo: card.businessGoal || '',\n    'Pr?-condi??o / Cen?rio': card.qaNotes || '',\n    Passos: acceptanceCriteria.join('\\n'),\n    'Resultado Esperado': acceptanceCriteria.join('\\n'),\n    Status: card.column || 'Backlog',\n    Tags: scenarios.map((scenario) => scenario.id).filter(Boolean).join(', '),\n    card,\n    scenarios,\n  };\n}\n\nreturn cards.map((card) => ({ json: toRow(card) }));\n"
       },
       "id": "c14f4d30-be39-4341-b7d8-5d9a00260a75",
       "name": "DB Ler para Deletar",
@@ -1117,6 +1117,150 @@
         25024,
         20496
       ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ (() => { const config = $json.config || {}; const baseUrl = String(config.appPublicUrl || config.APP_PUBLIC_URL || '').trim().replace(/\\/+$/, ''); const tenantId = String(config.tenantId || $json.tenantId || $json.tenantSlug || '').trim(); if (!baseUrl) { throw new Error('URL publica do app nao encontrada na configuracao.'); } return baseUrl + '/api/n8n/board/cards?tenantId=' + encodeURIComponent(tenantId); })() }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8f5e32a1-2a75-4fd7-a0aa-54e8cb8c0102",
+      "name": "HTTP Ler para Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        23568,
+        20416
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ (() => { const config = $json.config || {}; const baseUrl = String(config.appPublicUrl || config.APP_PUBLIC_URL || '').trim().replace(/\\/+$/, ''); const tenantId = String(config.tenantId || $json.tenantId || $json.tenantSlug || '').trim(); if (!baseUrl) { throw new Error('URL publica do app nao encontrada na configuracao.'); } return baseUrl + '/api/n8n/board/cards?tenantId=' + encodeURIComponent(tenantId); })() }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8f5e32a1-2a75-4fd7-a0aa-54e8cb8c0103",
+      "name": "HTTP Ler para Editar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        23568,
+        20608
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ (() => { const config = $json.config || {}; const baseUrl = String(config.appPublicUrl || config.APP_PUBLIC_URL || '').trim().replace(/\\/+$/, ''); const tenantId = String(config.tenantId || $json.tenantId || $json.tenantSlug || '').trim(); if (!baseUrl) { throw new Error('URL publica do app nao encontrada na configuracao.'); } return baseUrl + '/api/n8n/board/cards?tenantId=' + encodeURIComponent(tenantId); })() }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8f5e32a1-2a75-4fd7-a0aa-54e8cb8c0104",
+      "name": "HTTP Ler Funcionais IA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        23568,
+        19360
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ (() => { const config = $json.config || {}; const baseUrl = String(config.appPublicUrl || config.APP_PUBLIC_URL || '').trim().replace(/\\/+$/, ''); const tenantId = String(config.tenantId || $json.tenantId || $json.tenantSlug || '').trim(); if (!baseUrl) { throw new Error('URL publica do app nao encontrada na configuracao.'); } return baseUrl + '/api/n8n/board/cards?tenantId=' + encodeURIComponent(tenantId); })() }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8f5e32a1-2a75-4fd7-a0aa-54e8cb8c0105",
+      "name": "HTTP Ler Performance IA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        23568,
+        19552
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ (() => { const config = $json.config || {}; const baseUrl = String(config.appPublicUrl || config.APP_PUBLIC_URL || '').trim().replace(/\\/+$/, ''); const tenantId = String(config.tenantId || $json.tenantId || $json.tenantSlug || '').trim(); if (!baseUrl) { throw new Error('URL publica do app nao encontrada na configuracao.'); } return baseUrl + '/api/n8n/board/cards?tenantId=' + encodeURIComponent(tenantId); })() }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8f5e32a1-2a75-4fd7-a0aa-54e8cb8c0106",
+      "name": "HTTP Ler para Deletar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        23568,
+        20800
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ (() => { const config = $json.config || {}; const baseUrl = String(config.appPublicUrl || config.APP_PUBLIC_URL || '').trim().replace(/\\/+$/, ''); const tenantId = String(config.tenantId || $json.tenantId || $json.tenantSlug || '').trim(); if (!baseUrl) { throw new Error('URL publica do app nao encontrada na configuracao.'); } return baseUrl + '/api/n8n/board/cards?tenantId=' + encodeURIComponent(tenantId); })() }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8f5e32a1-2a75-4fd7-a0aa-54e8cb8c0100",
+      "name": "HTTP Ler Cenários",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        23792,
+        19792
+      ]
     }
   ],
   "pinData": {
@@ -1217,14 +1361,14 @@
       "main": [
         [
           {
-            "node": "DB Ler Cenários",
+            "node": "HTTP Ler Cenários",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "DB Ler Cenários",
+            "node": "HTTP Ler Cenários",
             "type": "main",
             "index": 0
           }
@@ -1238,33 +1382,33 @@
         ],
         [
           {
-            "node": "DB Ler para Editar",
+            "node": "HTTP Ler para Editar",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "DB Ler para Status",
+            "node": "HTTP Ler para Status",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "DB Ler para Deletar",
+            "node": "HTTP Ler para Deletar",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "DB Ler Funcionais IA",
+            "node": "HTTP Ler Funcionais IA",
             "type": "main",
             "index": 0
           },
           {
-            "node": "DB Ler Performance IA",
+            "node": "HTTP Ler Performance IA",
             "type": "main",
             "index": 0
           }
@@ -1729,6 +1873,72 @@
         [
           {
             "node": "Load Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Ler para Status": {
+      "main": [
+        [
+          {
+            "node": "DB Ler para Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Ler para Editar": {
+      "main": [
+        [
+          {
+            "node": "DB Ler para Editar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Ler Funcionais IA": {
+      "main": [
+        [
+          {
+            "node": "DB Ler Funcionais IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Ler Performance IA": {
+      "main": [
+        [
+          {
+            "node": "DB Ler Performance IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Ler para Deletar": {
+      "main": [
+        [
+          {
+            "node": "DB Ler para Deletar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Ler Cenários": {
+      "main": [
+        [
+          {
+            "node": "DB Ler Cenários",
             "type": "main",
             "index": 0
           }
